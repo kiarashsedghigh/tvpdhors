@@ -4,6 +4,9 @@
 #include <bftvmhors/types.h>
 
 
+#define BITS_2_BYTES(bits) (bits/8)
+
+
 
 /// Concatenate two buffers into one
 /// \param output Output buffer
@@ -15,5 +18,38 @@
 u64 concat_buffers(u8 * output, u8 * buffer1, u32 len1, u8 * buffer2, u32 len2);
 
 
+/// Removes the whitespaces at the left of a string
+/// \param input Pointer to the input
+/// \return Pointer to the beginning of the new string
+u8 * str_ltrim(u8 * input);
 
-#endif//BFTVMHORS_FORMAT_H
+/// Removes the whitespaces at the right of a string
+/// \param input Pointer to the input
+void str_rtrim(u8 * input);
+
+/// Removes the whitespaces at both the right and left of a string
+/// \param input Pointer to the input
+/// \return Pointer to the beginning of the new string
+u8 * str_trim(u8 * input);
+
+
+/// Removes the whitespaces at the left of a string
+/// \param input Pointer to the input
+/// \param char Consider ch along with the whitespaces
+/// \return Pointer to the beginning of the new string
+u8 * str_ltrim_char(u8 * input, u8 ch);
+
+/// Removes the whitespaces at the right of a string
+/// \param char Consider ch along with the whitespaces
+/// \param input Pointer to the input
+void str_rtrim_char(u8 * input, u8 ch);
+
+/// Removes the whitespaces at both the right and left of a string
+/// \param char Consider ch along with the whitespaces
+/// \param input Pointer to the input
+/// \return Pointer to the beginning of the new string
+u8 * str_trim_char(u8 * input, u8 ch);
+
+
+
+#endif

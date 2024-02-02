@@ -6,16 +6,15 @@
 
 #define SBF_DEF_SIZE 1024
 #define SBF_DEF_NUM_HASH_FUNCS 64
-#define SBF_DEF_HASH_FUNCTION "mm"
+#define SBF_DEF_HASH_FUNCTION "sha256"
 
 /// Implements the Standard Bloom Filter (SBF) hyper parameters (HP)
-struct sbf_hp{
+typedef struct sbf_hp{
     u32 size;               // Size of the SBF
     u32 num_hash_functions;     // Number of hash functions to be used
     u8 * hash_family;           // Family of the functions to be used for hashing. #TODO Talk about the list
-}sbf_hp_default = {SBF_DEF_SIZE, SBF_DEF_NUM_HASH_FUNCS, SBF_DEF_HASH_FUNCTION};
-
-typedef struct sbf_hp sbf_hp_t;
+}sbf_hp_t;
+//sbf_hp_default = {SBF_DEF_SIZE, SBF_DEF_NUM_HASH_FUNCS, SBF_DEF_HASH_FUNCTION};
 
 
 /// Creates the hyper parameters of the SBF
@@ -23,8 +22,7 @@ typedef struct sbf_hp sbf_hp_t;
 /// \param num_hash_functions Number of hash functions to be used. (0 for default)
 /// \param hash_family Type of the hash function to be used. (NULL for default)
 /// \return SBF hyper parameter struct (sbf_hp_t)
-sbf_hp_t sbf_new_hp(u32 size, u32 num_hash_functions, const u8 * hash_family);
-
+u32 sbf_new_hp(sbf_hp_t * sbf_hp, u32 size, u32 num_hash_functions, const u8 * hash_family);
 
 
 /// Standard Bloom Filter (SBF) implementation
@@ -39,7 +37,7 @@ typedef struct sbf{
 /// Creates a new SBF with the given hyper parameters
 /// \param sbf_hp The SBF hyper parameters
 /// \return New SBF (sbf_t)
-sbf_t sbf_creat(const sbf_hp_t * sbf_hp);
+u32 sbf_create(sbf_t * sbf ,const sbf_hp_t * sbf_hp);
 
 
 /// Destroys the given SBF

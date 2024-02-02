@@ -10,26 +10,24 @@
 
 
 //TODO check for family and other. Check for size to be *8
-sbf_hp_t sbf_new_hp(u32 size, u32 num_hash_functions, const u8 * hash_family){
-    sbf_hp_t sbf_hp;
-    sbf_hp.size = size==0 ? sbf_hp_default.size:size;
-    sbf_hp.num_hash_functions = num_hash_functions==0 ? sbf_hp_default.num_hash_functions: num_hash_functions;
-    sbf_hp.hash_family = hash_family==NULL ? sbf_hp_default.hash_family:hash_family;
-    return sbf_hp;
+u32 sbf_new_hp(sbf_hp_t * sbf_hp, u32 size, u32 num_hash_functions, const u8 * hash_family){
+    sbf_hp->size = size;
+    sbf_hp->num_hash_functions = num_hash_functions;
+    sbf_hp->hash_family = hash_family;
+    return 0;
 }
 
 
-// TODO replace hash function
-sbf_t sbf_creat(const sbf_hp_t * sbf_hp){
-    sbf_t sbf;
-    sbf.size = sbf_hp->size;
-    sbf.num_hash_functions = sbf_hp->num_hash_functions;
-    sbf.bv = malloc(sbf.size/8);
-    sbf.hash_functions = malloc(sizeof(u32(*)(u8 *, const u8 *, u64)) * sbf.size);
-    for(int i=0;i<sbf.size;i++)
-        sbf.hash_functions[i] = hash_sha2_256;
+// TODO replace hash function, error return
+u32 sbf_create(sbf_t * sbf ,const sbf_hp_t * sbf_hp){
+    sbf->size = sbf_hp->size;
+    sbf->num_hash_functions = sbf_hp->num_hash_functions;
+    sbf->bv = malloc(sbf->size/8);
+    sbf->hash_functions = malloc(sizeof(u32(*)(u8 *, const u8 *, u64)) * sbf->size);
+    for(int i=0;i<sbf->size;i++)
+        sbf->hash_functions[i] = hash_sha2_256;
 
-    return sbf;
+    return 0;
 }
 
 void sbf_destroy(const sbf_t * sbf){
@@ -118,18 +116,18 @@ u32 sbf_check(const sbf_t * sbf, const u8 * input, u64 length){
 
 
 
-
-int main(){
-
-    sbf_hp_t  sbf_hp = sbf_hp_default;
-    sbf_t sbf = sbf_creat(&sbf_hp);
-
-
-    sbf_insert(&sbf, "asd", 3);
-    printf("%d\n", sbf_check(&sbf,"vvvv",3));
-    sbf_destroy(&sbf);
-
-}
+//
+//int main(){
+//
+////    sbf_hp_t  sbf_hp = sbf_hp_default;
+////    sbf_t sbf = sbf_create(&sbf_hp);
+////
+////
+////    sbf_insert(&sbf, "asd", 3);
+////    printf("%d\n", sbf_check(&sbf,"vvvv",3));
+////    sbf_destroy(&sbf);
+//
+//}
 
 
 
