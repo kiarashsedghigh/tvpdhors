@@ -57,7 +57,7 @@ void sbf_insert(const sbf_t * sbf, const u8 * input, u64 length);
 /// \param input The input to be inserted into the SBF
 /// \param length The length of the input
 /// \return Returns 1 if the element exists in the SBF, otherwise, 0
-u32 sbf_check(const sbf_t * sbf, const u8 * input, u64 length);
+u32 sbf_check(const sbf_t * sbf, const u8 * input, u64 input_length);
 
 
 #endif

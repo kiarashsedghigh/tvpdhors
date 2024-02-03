@@ -4,10 +4,6 @@
 #include <bftvmhors/types.h>
 
 
-#define BITS_2_BYTES(bits) (bits/8)
-
-
-
 /// Concatenate two buffers into one
 /// \param output Output buffer
 /// \param buffer1 First buffer

@@ -13,6 +13,7 @@ typedef struct bftvmhors_hp{
     u8 * seed_file;             // Seed file
     u32 sk_seed_len;            // Length of private key seeds in bits
     sbf_hp_t sbf_hp;            // Hyper parameters of the underlying Standard Bloom Filter (SBF)
+    u8 do_rejection_sampling;   // Do/Don't perform rejection sampling
 }bftvmhors_hp_t;
 
 
@@ -25,16 +26,24 @@ typedef struct bftvmhors_keys{
 }bftvmhors_keys_t;
 
 
+/// Implements the BFTVMHORS signature
+typedef struct bftvmhors_signature {
+    u8 *signature;
+    u32 rejection_sampling_counter;
+}bftvmhors_signature_t;
 
 /// Implements the BFTVMHORS signer
 typedef struct bftvmhors_signer{
     u32 state;
+    bftvmhors_keys_t * keys;
+    bftvmhors_hp_t * hp;
 }bftvmhors_signer_t;
 
 
 /// Implements the BFTVMHORS verifier
 typedef struct bftvmhors_verifier{
     u32 state;
+    sbf_t * pk;
 }bftvmhors_verifier_t;
 
 

@@ -5,12 +5,13 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
+
+
 u32 read_file(u8 ** output_buffer, u8 * file_name){
     FILE * fp;
 
     if (!(fp = fopen(file_name,"r")))
         return 0;
-
 
     struct stat file_stat;
     stat(file_name,&file_stat);
@@ -27,14 +28,6 @@ u32 read_file(u8 ** output_buffer, u8 * file_name){
 u32 read_file_line(u8 * line, u32 line_size, u8 * file_name){
     static FILE * fp;
 
-    struct stat file_stat;
-    int x = stat("./config",&file_stat);
-
-
-
-    exit(0);
-
-
     if (!file_name){
         fp = NULL;
         return 1;
@@ -43,8 +36,6 @@ u32 read_file_line(u8 * line, u32 line_size, u8 * file_name){
     if (!fp)
         if (!(fp = fopen(file_name,"r")))
             return 1;
-
-
 
     /* Read line */
     if (!fgets(line, line_size, fp))
