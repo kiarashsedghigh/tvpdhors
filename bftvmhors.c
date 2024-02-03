@@ -95,9 +95,9 @@ u32 bftvmhors_new_hp(bftvmhors_hp_t * new_hp, const u8 * config_file){
     return 0;
 }
 
-void bftvmhors_destroy_hp(bftvmhors_hp_t * bftvmhors_hp){
-    free(bftvmhors_hp->seed_file);
-}
+//void bftvmhors_destroy_hp(bftvmhors_hp_t * bftvmhors_hp){
+//    free(bftvmhors_hp->seed_file);
+//}
 
 u32 bftvmhors_keygen(bftvmhors_keys_t * keys, bftvmhors_hp_t * hp){
 
