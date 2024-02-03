@@ -27,7 +27,7 @@ u32 sbf_create(sbf_t * sbf ,const sbf_hp_t * sbf_hp){
 
     sbf->hash_functions = malloc(sizeof(u32(*)(u8 *, const u8 *, u64)) * sbf->size);
     for(int i=0;i<sbf->size;i++)
-        sbf->hash_functions[i] = hash_sha2_256;
+        sbf->hash_functions[i] = hash_sha2_256; // hash_sha2_256 jenkins_oaat fnv64_0 fnv64_1 fnv64_1a
 
     return 0;
 }
@@ -46,9 +46,10 @@ void sbf_insert(const sbf_t * sbf, const u8 * input, u64 length){
 
     u8 hash_buffer[HASH_MAX_LENGTH_THRESHOLD];
 
+    u8 * concat_buffer_result = malloc(length+4);
+
     for (u32 i=0; i<sbf->num_hash_functions ;i++){
 
-        u8 concat_buffer_result[length+4]; //TODO
         u32 new_length = concat_buffers(concat_buffer_result, input, length, (u8 *)&i, 4);
 
         u32 hash_size = sbf->hash_functions[i](hash_buffer, concat_buffer_result, new_length);
@@ -74,17 +75,20 @@ void sbf_insert(const sbf_t * sbf, const u8 * input, u64 length){
         u8 sbf_current_byte = sbf->bv[SBF_2_BYTE_IDX(target_idx)];
         sbf_current_byte |= 1 << (8-SBF_2_BIT_IDX(target_idx)-1);
         sbf->bv[SBF_2_BYTE_IDX(target_idx)] = sbf_current_byte;
+
     }
+    free(concat_buffer_result);
+
 }
 
 
 u32 sbf_check(const sbf_t * sbf, const u8 * input, u64 input_length){
 
     u8 hash_buffer[HASH_MAX_LENGTH_THRESHOLD];
+    u8 * concat_buffer_result = malloc(input_length+4);
 
     for (u32 i=0; i<sbf->num_hash_functions ;i++){
 
-        u8 concat_buffer_result[input_length+4];
         u8 new_length = concat_buffers(concat_buffer_result, input, input_length, (u8 *)&i, 4);
         u32 hash_size = sbf->hash_functions[i](hash_buffer, concat_buffer_result, new_length);
 
@@ -102,8 +106,11 @@ u32 sbf_check(const sbf_t * sbf, const u8 * input, u64 input_length){
         u32 target_idx = atoi(BN_bn2dec(rem));
         u8 sbf_current_byte = sbf->bv[SBF_2_BYTE_IDX(target_idx)];
 
-        if ( !(sbf_current_byte & (1 << ( 8-SBF_2_BIT_IDX(target_idx)-1) )) )
+        if ( !(sbf_current_byte & (1 << ( 8-SBF_2_BIT_IDX(target_idx)-1) )) ){
+            free(concat_buffer_result);
             return 0;
+        }
     }
+    free(concat_buffer_result);
     return 1;
 }

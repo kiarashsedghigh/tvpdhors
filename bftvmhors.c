@@ -232,8 +232,6 @@ u32 bftvmhors_sign(bftvmhors_signature_t * signature, bftvmhors_signer_t * signe
     /* Extract the portions from the private key and write to the signature */
     u32 bit_slice_len = log2(signer->hp->t);
 
-
-
     for(u32 i=0;i<signer->hp->k;i++){
         u32 portion_value = read_bits_as_4bytes(message_hash, i+1, bit_slice_len); //TODO
         memcpy(signature->signature + i* BITS_2_BYTES(signer->hp->l), current_state_keys + portion_value*BITS_2_BYTES(signer->hp->l), BITS_2_BYTES(signer->hp->l));
@@ -298,11 +296,12 @@ int main(){
     bftvmhors_signer_t signer = bftvmhors_new_signer(&bftvmhors_hp, &bftvmhors_keys);
     bftvmhors_signature_t signature;
     signature.signature = malloc(signer.hp->k * BITS_2_BYTES(signer.hp->l));
-    bftvmhors_sign(&signature, &signer , "asd", 3);
+    bftvmhors_sign(&signature, &signer , "aaa", 3);
+
 
     /* Verifier */
     bftvmhors_verifier_t verifier = bftvmhors_new_verifier(&bftvmhors_keys.pk);
-    printf("%d\n", bftvmhors_verify(&verifier, &bftvmhors_hp, &signature, "asd", 3));
+    printf(">> %d\n", bftvmhors_verify(&verifier, &bftvmhors_hp, &signature, "thip is kiarash", 15));
 
     bftvmhors_destroy_hp(&bftvmhors_hp);
 }
