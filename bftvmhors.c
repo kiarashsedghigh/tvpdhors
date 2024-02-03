@@ -9,7 +9,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <stdio.h>
-
+#include <time.h>
+#include <sys/time.h>
 
 u32 bftvmhors_new_hp(bftvmhors_hp_t * new_hp, const u8 * config_file){
     u8 line[100];
@@ -180,7 +181,6 @@ static u32 rejection_sampling(u32 k, u32 t, u8 * message_hash, u8 * message, u64
 
 
 static u32 is_rejected_sampling(u32 k, u32 t, u32 ctr, u8 * message_hash, u8 * message, u64 message_len){
-
     u8 * buffer = malloc(message_len + sizeof(ctr));
     u8 * portion_number_memory = malloc(t);
     u32 bit_slice_len = log2(t);
@@ -239,6 +239,7 @@ u32 bftvmhors_sign(bftvmhors_signature_t * signature, bftvmhors_signer_t * signe
 
     free(current_state_keys); //TODO check these
     signer->state++;
+
     return 0;
 }
 
@@ -275,7 +276,8 @@ u32 bftvmhors_verify(bftvmhors_verifier_t * verifier, bftvmhors_hp_t * hp, bftvm
 
         if (!sbf_check(verifier->pk, element, length)){
             printf("Signature is not valid \n");
-            verifier->state++;
+            verifier->state = 0;
+
             return 1;
         }
     }
@@ -301,9 +303,9 @@ int main(){
 
     /* Verifier */
     bftvmhors_verifier_t verifier = bftvmhors_new_verifier(&bftvmhors_keys.pk);
-    printf(">> %d\n", bftvmhors_verify(&verifier, &bftvmhors_hp, &signature, "thip is kiarash", 15));
+    printf(">> %d\n", bftvmhors_verify(&verifier, &bftvmhors_hp, &signature, "aaa", 3));
 
-    bftvmhors_destroy_hp(&bftvmhors_hp);
+//    bftvmhors_destroy_hp(&bftvmhors_hp);
 }
 
 

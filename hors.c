@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <string.h>
 
+
 u32 hors_new_hp(hors_hp_t * new_hp, const u8 * config_file){
   u8 line[100];
 
@@ -77,8 +78,6 @@ u32 hors_new_hp(hors_hp_t * new_hp, const u8 * config_file){
 }
 
 
-
-
 u32 hors_keygen(hors_keys_t * keys, hors_hp_t * hp){
 
   /* Read the seed file */
@@ -92,7 +91,6 @@ u32 hors_keygen(hors_keys_t * keys, hors_hp_t * hp){
   /* Generate the PK */
   keys->pk = malloc(BITS_2_BYTES(256)* hp->t); //TODO convert 256 to  a constant
 
-
   /* Compute OWF of privates as public key */
   for(u32 i=0; i<hp->t; i++){
 
@@ -103,6 +101,7 @@ u32 hors_keygen(hors_keys_t * keys, hors_hp_t * hp){
       memcpy(keys->pk + i* BITS_2_BYTES(hp->l), message_hash, hash_size);
     }
   }
+
   return 0; //TODO check error
 }
 
@@ -153,6 +152,7 @@ static u32 rejection_sampling(u32 k, u32 t, u8 * message_hash, u8 * message, u64
 
 static u32 is_rejected_sampling(u32 k, u32 t, u32 ctr, u8 * message_hash, u8 * message, u64 message_len){
 
+
   u8 * buffer = malloc(message_len + sizeof(ctr));
   u8 * portion_number_memory = malloc(t);
   u32 bit_slice_len = log2(t);
@@ -196,6 +196,7 @@ u32 hors_sign(hors_signature_t * signature, hors_signer_t * signer, u8 * message
     u32 portion_value = read_bits_as_4bytes(message_hash, i+1, bit_slice_len); //TODO
     memcpy(&signature->signature[i* BITS_2_BYTES(signer->hp->l)], &signer->keys->sk[portion_value*BITS_2_BYTES(signer->hp->l)], BITS_2_BYTES(signer->hp->l));
   }
+
   return 0;
 }
 
@@ -209,7 +210,6 @@ hors_verifier_t bftvmhors_new_verifier(u8 * pk){
 
 
 u32 hors_verify(hors_verifier_t * verifier, hors_hp_t * hp, hors_signature_t * signature, u8 * message, u64 message_len){
-
 
   u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
   if (hp->do_rejection_sampling){
@@ -252,11 +252,8 @@ int main(){
   signature.signature = malloc(signer.hp->k * BITS_2_BYTES(signer.hp->l));
   hors_sign(&signature, &signer , "qweqweqwe", 9);
 
-
-
   hors_verifier_t verifier = bftvmhors_new_verifier(hors_keys.pk);
   printf(">> %d\n", hors_verify(&verifier, &hors_hp, &signature, "aweqweqwe", 9));
-
 
 }
 

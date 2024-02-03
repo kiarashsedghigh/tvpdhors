@@ -23,13 +23,9 @@ u32 read_bits_as_4bytes(const u8 * input, u32 nth, u32 bit_slice_len){
     }else{
         /* Read the whole remaining bits of the current byte */
         result = input[target_byte_start_index];
-//        printf("HERE %d %d \n",result, next_8bit_boundary - target_bit_slice_start_index);
 
         /* No shift to the right, only masking the left bits */
         result &= (1 << (next_8bit_boundary - target_bit_slice_start_index-1))  - 1;
-
-//        printf("HERE %d %d \n",result, next_8bit_boundary - target_bit_slice_start_index);
-//        exit(0);
 
         /* Reading the remaining bits */
         bit_slice_len -= next_8bit_boundary - target_bit_slice_start_index;
@@ -46,7 +42,6 @@ u32 read_bits_as_4bytes(const u8 * input, u32 nth, u32 bit_slice_len){
         result = result << num_of_rem_bits;
         result |= input[next_8bit_boundary/8 + num_of_rem_bytes] >> (8 - num_of_rem_bits);
     }
-
     return result;
 }
 
@@ -62,11 +57,3 @@ u32 pad_with_zero(u8 * output, u8 * input, u32 input_len, u32 boundary_coefficie
 
     return input_len + num_bytes_to_add;
 }
-
-//int main(){
-//    u8 buffer[]={0x5f,0xd9, 0x24, 0x62,0x5f};
-//    printf("%d\n", read_bits_as_4bytes(buffer, 3, 10));
-//}
-//
-//
-

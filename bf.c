@@ -27,7 +27,7 @@ u32 sbf_create(sbf_t * sbf ,const sbf_hp_t * sbf_hp){
 
     sbf->hash_functions = malloc(sizeof(u32(*)(u8 *, const u8 *, u64)) * sbf->size);
     for(int i=0;i<sbf->size;i++)
-        sbf->hash_functions[i] = hash_sha2_256; // hash_sha2_256 jenkins_oaat fnv64_0 fnv64_1 fnv64_1a
+        sbf->hash_functions[i] = fnv64_1; // hash_sha2_256 jenkins_oaat fnv64_0 fnv64_1 fnv64_1a
 
     return 0;
 }
