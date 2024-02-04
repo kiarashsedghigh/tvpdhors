@@ -6,6 +6,16 @@ HORS_SRC = src/hors.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
 BFTVMHORS_SRC = src/bf.c src/bftvmhors.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
 TEST_SRC = src/test.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
 
+HEADER_FILES= bf.h bftvmhors.h hash.h hors.h prng.h types.h
+
+
+install:
+	if [ ! -d /usr/include/bftvmhors/ ]; then \
+		mkdir /usr/include/bftvmhors/; \
+	fi
+	cp src/*.h /usr/include/bftvmhors/
+	cp src/utils/*.h /usr/include/bftvmhors/
+
 BFTVMHORS:
 	if [ ! -d ./target ]; then \
 		mkdir ./target; \
@@ -28,3 +38,6 @@ TEST:
 
 clean:
 	rm -rf ./target ./test
+
+#header_clean:
+#	rm -rf /usr/include/bftvmhors/{$(HEADER_FILES)}
