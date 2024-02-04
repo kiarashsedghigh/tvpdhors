@@ -1,0 +1,30 @@
+CC = gcc
+CFLAGS = -O3 -w -std=c11 -Wall -Wextra
+LDFLAGS = -lssl -lcrypto -ltomcrypt -lm
+
+HORS_SRC = src/hors.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
+BFTVMHORS_SRC = src/bf.c src/bftvmhors.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
+TEST_SRC = src/test.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
+
+BFTVMHORS:
+	if [ ! -d ./target ]; then \
+		mkdir ./target; \
+	fi
+	$(CC) $(BFTVMHORS_SRC) $(CFLAGS) -o target/bft $(LDFLAGS)
+	cp src/config seed target
+
+HORS:
+	if [ ! -d ./target ]; then \
+		mkdir ./target; \
+	fi
+	$(CC) $(HORS_SRC) $(CFLAGS) -o target/hors $(LDFLAGS)
+	cp src/config seed target
+
+TEST:
+	if [ ! -d ./test ]; then \
+		mkdir ./test; \
+	fi
+	$(CC) $(TEST_SRC) $(CFLAGS) -o test/test $(LDFLAGS)
+
+clean:
+	rm -rf ./target ./test
