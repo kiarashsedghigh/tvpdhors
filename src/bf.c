@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <openssl/x509.h>
 
 // TODO Check for size to be *8
 sbf_hp_t sbf_new_hp(u32 size, u32 num_hash_functions, const u8 *hash_family) {
@@ -33,6 +34,10 @@ u32 sbf_create(sbf_t *sbf, const sbf_hp_t *sbf_hp) {
     selected_hash_function = ltc_hash_sha2_256;
   else if (strcmp(sbf_hp->hash_family, "openssl_sha256") == 0)
     selected_hash_function = openssl_hash_sha2_256;
+  else if (strcmp(sbf_hp->hash_family, "openssl_md5") == 0)
+    selected_hash_function = openssl_hash_md5;
+  else if (strcmp(sbf_hp->hash_family, "openssl_sha1") == 0)
+    selected_hash_function = openssl_hash_sha1;
   else if (strcmp(sbf_hp->hash_family, "jenkins_oaat") == 0)
     selected_hash_function = jenkins_oaat;
   else if (strcmp(sbf_hp->hash_family, "fnv64_0") == 0)
@@ -41,6 +46,23 @@ u32 sbf_create(sbf_t *sbf, const sbf_hp_t *sbf_hp) {
     selected_hash_function = fnv64_1;
   else if (strcmp(sbf_hp->hash_family, "fnv64_1a") == 0)
     selected_hash_function = fnv64_1a;
+  else if (strcmp(sbf_hp->hash_family, "jp_aumasson_siphash") == 0)
+    selected_hash_function = jp_aumasson_siphash;
+  else if (strcmp(sbf_hp->hash_family, "blake2b_256") == 0)
+    selected_hash_function = blake2b_256;
+  else if (strcmp(sbf_hp->hash_family, "blake2b_384") == 0)
+    selected_hash_function = blake2b_384;
+  else if (strcmp(sbf_hp->hash_family, "blake2b_512") == 0)
+    selected_hash_function = blake2b_512;
+  else if (strcmp(sbf_hp->hash_family, "blake2s_128") == 0)
+    selected_hash_function = blake2s_128;
+  else if (strcmp(sbf_hp->hash_family, "blake2s_160") == 0)
+    selected_hash_function = blake2s_160;
+  else if (strcmp(sbf_hp->hash_family, "blake2s_224") == 0)
+    selected_hash_function = blake2s_224;
+  else if (strcmp(sbf_hp->hash_family, "blake2s_256") == 0)
+    selected_hash_function = blake2s_256;
+
   else  // Default
     selected_hash_function = ltc_hash_sha2_256;
 

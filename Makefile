@@ -2,9 +2,9 @@ CC = gcc
 CFLAGS = -O3 -w -std=c11 -Wall -Wextra
 LDFLAGS = -lssl -lcrypto -ltomcrypt -lm
 
-HORS_SRC = src/hors.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
-BFTVMHORS_SRC = src/bf.c src/bftvmhors.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
-TEST_SRC = src/test.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
+HORS_SRC = src/hors.c src/crypto/hash/blake/*.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
+BFTVMHORS_SRC = src/bf.c src/crypto/hash/blake/*.c src/bftvmhors.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
+TEST_SRC = src/test.c src/crypto/hash/blake/*.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
 
 HEADER_FILES= bf.h bftvmhors.h hash.h hors.h prng.h types.h
 

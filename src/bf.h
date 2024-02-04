@@ -11,11 +11,11 @@
 /// Implements the Standard Bloom Filter (SBF) hyper parameters (HP)
 /// List of hash functions supported are:
 ///         ltc_sha256
-///         openssl_sha256
+///         openssl_sha256 openssl_md5
 ///         jenkins_oaat
-///         fnv64_0
-///         fnv64_1
-///         fnv64_1a
+///         fnv64_0 fnv64_1 fnv64_1a
+///         jp_aumasson_siphash
+///         blake2b_256 blake2b_384 blake2b_512
 typedef struct sbf_hp {
   u32 size;                // Size of the SBF
   u32 num_hash_functions;  // Number of hash functions to be used
