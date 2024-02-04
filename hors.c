@@ -1,248 +1,283 @@
-#include <bftvmhors/hors.h>
+#include <bftvmhors/hash.h>
+#include <bftvmhors/bits.h>
 #include <bftvmhors/file.h>
 #include <bftvmhors/format.h>
+#include <bftvmhors/hors.h>
 #include <bftvmhors/prng.h>
-#include <bftvmhors/bits.h>
-#include <bftvmhors/hash.h>
 #include <math.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
+#define CONFIG_FILE_MAX_LENGTH 300
 
-u32 hors_new_hp(hors_hp_t * new_hp, const u8 * config_file){
-  u8 line[100];
-
-  read_file_line(line, 100, NULL);
-
-  while(!read_file_line(line, 100, config_file)){
-    char * token;
-    char * delim = "=";
-
-    /* get the first token */
-    token = strtok(line, delim);
-    /* walk through other tokens */
-    while( token != NULL ) {
-      if (!strcmp(token, "N")){
-        if ((token = strtok(NULL, delim))){
-          new_hp->N = atoi(token); //TODO
-        }else
-          return 1;
-
-      }else if (!strcmp(token, "t")){
-        if ((token = strtok(NULL, delim))){
-          new_hp->t = atoi(token); //TODO
-        }else
-          return 1;
-
-      }else if (!strcmp(token, "k")){
-        if ((token = strtok(NULL, delim))){
-          new_hp->k = atoi(token); //TODO
-        }else
-          return 1;
-
-      }else if (!strcmp(token, "l")){
-        if ((token = strtok(NULL, delim))){
-          new_hp->l = atoi(token); //TODO
-        }else
-          return 1;
-
-      }else if (!strcmp(token, "rejection_sampling")){
-        if ((token = strtok(NULL, delim))){
-          if (strcmp(token,"true")==0)
-            new_hp->do_rejection_sampling=1;
-          else
-            new_hp->do_rejection_sampling=0;
-        }else
-          return 1;
-      }else if (!strcmp(token, "sk_seed_len")){
-        if ((token = strtok(NULL, delim))){
-          new_hp->sk_seed_len = atoi(token); //TODO
-        }else
-          return 1;
-
-      }else if (!strcmp(token, "seed")) {
-        if ((token = strtok(NULL, delim))) { // TODO
-          token = str_trim_char(token, '#');
-          new_hp->seed_file = malloc(strlen(token));
-          memcpy(new_hp->seed_file, token, strlen(token));
-        } else
-          return 1;
-
-      }else
-        return 1;
-      token = strtok(NULL, delim);
-    }
-  }
-  return 0;
-}
-
-
-u32 hors_keygen(hors_keys_t * keys, hors_hp_t * hp){
-
+/// HORS key generation
+/// \param keys Pointer to the HORS keys
+/// \param hp Pointer to the HORS HP
+/// \return HORS_KEYGEN_SUCCESS, HORS_KEYGEN_FAILED
+u32 hors_keygen(hors_keys_t* keys, hors_hp_t* hp) {
   /* Read the seed file */
-  u8 * seed;
+  u8* seed;
 
-  u32 seed_len = read_file(&seed, hp->seed_file); //TODO check for the error
+  u32 seed_len = read_file(&seed, hp->seed_file);
 
   /* Generate the t private keys */
-  prng_chacha20(&keys->sk, seed, seed_len, BITS_2_BYTES(hp->l) * hp->t); //TODO check for error
+  prng_chacha20(&keys->sk, seed, seed_len, BITS_2_BYTES(hp->l) * hp->t);
 
   /* Generate the PK */
-  keys->pk = malloc(BITS_2_BYTES(256)* hp->t); //TODO convert 256 to  a constant
+  keys->pk = malloc(BITS_2_BYTES(hp->l) * hp->t);
 
   /* Compute OWF of privates as public key */
-  for(u32 i=0; i<hp->t; i++){
-
-    // Inserting generated private keys into the SBF
-    for (u32 j=0; j< hp->t; j++) {
-      u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
-      u32 hash_size = hash_sha2_256(message_hash, keys->sk + i*BITS_2_BYTES(hp->l), BITS_2_BYTES(hp->l));
-      memcpy(keys->pk + i* BITS_2_BYTES(hp->l), message_hash, hash_size);
-    }
+  for (u32 i = 0; i < hp->t; i++) {
+    u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
+    u32 hash_size = ltc_hash_sha2_256(message_hash, keys->sk + i * BITS_2_BYTES(hp->l), BITS_2_BYTES(hp->l));
+    memcpy(keys->pk + i * BITS_2_BYTES(hp->l), message_hash, hash_size);
   }
 
-  return 0; //TODO check error
+  return HORS_KEYGEN_SUCCESS;
 }
 
+/// Performing the rejection sampling on the input message to achieve higher security in HORS-based signatures. (Assumes rejection sampling is always successful)
+/// \param k HORS k parameter
+/// \param t HORS t parameter
+/// \param ctr Pointer to the rejection sampling 4-byte variable where the found counter will be written into it
+/// \param message_hash Pointer to a buffer for writing the resulting hash into for not doing it again when signing
+/// \param message  Pointer to the message to check signature on
+/// \param message_len  Length of the input message
+/// \return HORS_REJECTION_SAMPLING_SUCCESS, HORS_REJECTION_SAMPLING_FAILED
+static u32 rejection_sampling(u32 k, u32 t, u32* ctr, u8* message_hash, u8* message, u64 message_len) {
+  /* A message_counter_buffer containing the input message and the incremental counter */
+  u8* message_counter_buffer = malloc(message_len + sizeof(u32));
 
+  /* Creating a dictionary to see if a portion has already been generated from the hash of the message */
+  u8* portion_number_dict = malloc(t);
 
-hors_signer_t hors_new_signer(hors_hp_t * hp, hors_keys_t * keys){
+  /* HORS log(t), defining size of the bit slices */
+  u32 bit_slice_len = log2(t);
+
+  while (1) {
+    memcpy(message_counter_buffer, message, message_len);
+    memcpy(message_counter_buffer + message_len, ctr, sizeof(u32));
+    u32 ctr_found = 1;
+
+    /* Clear the dictionary */
+    for (u32 i = 0; i < t; i++) portion_number_dict[i] = 0;
+
+    ltc_hash_sha2_256(message_hash, message_counter_buffer, message_len + sizeof(u32));
+
+    for (u32 i = 0; i < k; i++) {
+      u32 portion_value = read_bits_as_4bytes(message_hash, i + 1, bit_slice_len);
+      if (portion_number_dict[portion_value]) {
+        ctr_found = 0;
+        break;
+      } else
+        portion_number_dict[portion_value] = 1;
+    }
+    if (ctr_found) {
+      free(message_counter_buffer);
+      free(portion_number_dict);
+      return HORS_REJECTION_SAMPLING_SUCCESS;
+    }
+    *ctr++;
+    /* If rejection sampling goes infinite times, we will reach 0 again in a 4-byte variable */
+    if (!*ctr) return HORS_REJECTION_SAMPLING_FAILED;
+  }
+}
+
+/// Checks if the rejection sampling has been done by checking if the passed counter is a valid counter
+/// \param k HORS k parameter
+/// \param t HORS t parameter
+/// \param ctr 4-byte rejection sampling counter
+/// \param message_hash Pointer to a buffer for writing the resulting hash into for not doing it again when signing
+/// \param message  Pointer to the message to check signature on
+/// \param message_len  Length of the input message
+/// \return HORS_REJECTION_SAMPLING_DONE, HORS_REJECTION_SAMPLING_NOT_DONE
+static u32 rejection_sampling_status(u32 k, u32 t, u32 ctr, u8* message_hash, u8* message, u64 message_len) {
+  /* A message_counter_buffer containing the input message and the incremental counter */
+  u8* message_counter_buffer = malloc(message_len + sizeof(u32));
+
+  /* Creating a dictionary to see if a portion has already been generated from the hash of the message */
+  u8* portion_number_dict = malloc(t);
+
+  /* HORS log(t), defining size of the bit slices */
+  u32 bit_slice_len = log2(t);
+
+  memcpy(message_counter_buffer, message, message_len);
+  memcpy(message_counter_buffer + message_len, &ctr, sizeof(u32));
+  u32 ctr_found = 1;
+
+  /* Clear the dictionary */
+  for (u32 i = 0; i < t; i++) portion_number_dict[i] = 0;
+
+  ltc_hash_sha2_256(message_hash, message_counter_buffer, message_len + sizeof(u32));
+  for (u32 i = 0; i < k; i++) {
+    u32 portion_value = read_bits_as_4bytes(message_hash, i + 1, bit_slice_len);
+    if (portion_number_dict[portion_value])
+      return HORS_REJECTION_SAMPLING_NOT_DONE;
+    else
+      portion_number_dict[portion_value] = 1;
+  }
+  return HORS_REJECTION_SAMPLING_DONE;
+}
+
+/// Passing the HORS hyper parameters and the keys it creates a HORS signer
+/// \param hp HORS hyper parameter
+/// \param keys HORS keys
+/// \return HORS signer
+hors_signer_t hors_new_signer(hors_hp_t* hp, hors_keys_t* keys) {
+  /* State has not been set as this is a one-time HORS */
   hors_signer_t signer;
   signer.keys = keys;
   signer.hp = hp;
   return signer;
 }
 
-
-
-static u32 rejection_sampling(u32 k, u32 t, u8 * message_hash, u8 * message, u64 message_len){
-  u32 ctr = 0;
-  u8 * buffer = malloc(message_len + sizeof(ctr));
-  u8 * portion_number_memory = malloc(t);
-  u32 bit_slice_len = log2(t);
-
-  while(1) {
-    memcpy(buffer, message, message_len);
-    memcpy(buffer + message_len, &ctr, sizeof(ctr));
-    u32 ctr_found=1;
-
-    for(u32 i=0;i<t;i++)
-      portion_number_memory[i]=0;
-
-    hash_sha2_256(message_hash, buffer, message_len + sizeof(ctr));
-
-    for(u32 i=0;i<k;i++){
-      u32 portion_value = read_bits_as_4bytes(message_hash, i+1, bit_slice_len); //TODO
-      if (portion_number_memory[portion_value]) {
-        ctr_found=0;
-        break;
-      }else
-        portion_number_memory[portion_value]=1;
-    }
-    if (ctr_found) {
-      free(buffer);
-      free(portion_number_memory);
-      return ctr;
-    }
-    ctr++;
-  }
-}
-
-
-static u32 is_rejected_sampling(u32 k, u32 t, u32 ctr, u8 * message_hash, u8 * message, u64 message_len){
-
-
-  u8 * buffer = malloc(message_len + sizeof(ctr));
-  u8 * portion_number_memory = malloc(t);
-  u32 bit_slice_len = log2(t);
-
-  memcpy(buffer, message, message_len);
-  memcpy(buffer + message_len, &ctr, sizeof(ctr));
-  u32 ctr_found=1;
-
-  for(u32 i=0;i<t;i++)
-    portion_number_memory[i]=0;
-
-  hash_sha2_256(message_hash, buffer, message_len + sizeof(ctr));
-
-  for(u32 i=0;i<k;i++){
-    u32 portion_value = read_bits_as_4bytes(message_hash, i+1, bit_slice_len); //TODO
-
-    if (portion_number_memory[portion_value])
-      return 0;
-    else
-      portion_number_memory[portion_value]=1;
-  }
-  return 1;
-}
-
-
-u32 hors_sign(hors_signature_t * signature, hors_signer_t * signer, u8 * message, u64 message_len){
-
+/// HORS signer
+/// \param signature Pointer to the output signature struct
+/// \param signer Pointer to the signer signer struct
+/// \param message  Pointer to the message to check signature on
+/// \param message_len  Length of the input message
+/// \return HORS_SIGNING_SUCCESS, HORS_SIGNING_FAILED
+u32 hors_sign(hors_signature_t* signature, hors_signer_t* signer, u8* message, u64 message_len) {
   u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
 
   /* Perform rejection sampling */
-  if (signer->hp->do_rejection_sampling)
-    signature->rejection_sampling_counter = rejection_sampling(signer->hp->k, signer->hp->t, message_hash, message, message_len);
-  else
-    /* Hashing the message */
-    hash_sha2_256(message_hash, message, message_len);
+  if (signer->hp->do_rejection_sampling) {
+    if (rejection_sampling(signer->hp->k, signer->hp->t, &signature->rejection_sampling_counter, message_hash, message, message_len) == HORS_REJECTION_SAMPLING_FAILED) return HORS_SIGNING_FAILED;
 
-  /* Extract the portions from the private key and write to the signature */
+  } else
+    /* Hashing the message */
+    ltc_hash_sha2_256(message_hash, message, message_len);
+
+  /* HORS log(t), defining size of the bit slices */
   u32 bit_slice_len = log2(signer->hp->t);
 
-  for(u32 i=0;i<signer->hp->k;i++){
-    u32 portion_value = read_bits_as_4bytes(message_hash, i+1, bit_slice_len); //TODO
-    memcpy(&signature->signature[i* BITS_2_BYTES(signer->hp->l)], &signer->keys->sk[portion_value*BITS_2_BYTES(signer->hp->l)], BITS_2_BYTES(signer->hp->l));
+  /* Extract the portions from the private key and write to the signature */
+  for (u32 i = 0; i < signer->hp->k; i++) {
+    u32 portion_value = read_bits_as_4bytes(message_hash, i + 1, bit_slice_len);
+    memcpy(&signature->signature[i * BITS_2_BYTES(signer->hp->l)], &signer->keys->sk[portion_value * BITS_2_BYTES(signer->hp->l)], BITS_2_BYTES(signer->hp->l));
   }
-
-  return 0;
+  return HORS_SIGNING_SUCCESS;
 }
 
-
-hors_verifier_t bftvmhors_new_verifier(u8 * pk){
+/// Passing the HORS public key, returns a HORS verifier
+/// \param pk HORS public key
+/// \return HORS verifier
+hors_verifier_t hors_new_verifier(u8* pk) {
+  /* State has not been set as this is a one-time HORS */
   hors_verifier_t verifier;
   verifier.pk = pk;
   return verifier;
 }
 
-
-
-u32 hors_verify(hors_verifier_t * verifier, hors_hp_t * hp, hors_signature_t * signature, u8 * message, u64 message_len){
-
+/// HORS verifier
+/// \param verifier Pointer to the HORS verifier struct
+/// \param hp Pointer to the HORS hyper parameter struct
+/// \param signature Pointer to the HORS signature struct
+/// \param message  Pointer to the message to check signature on
+/// \param message_len Length of the input message
+/// \return HORS_SIGNATURE_VERIFIED and HORS_SIGNATURE_REJECTED
+u32 hors_verify(hors_verifier_t* verifier, hors_hp_t* hp, hors_signature_t* signature, u8* message, u64 message_len) {
   u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
-  if (hp->do_rejection_sampling){
-    if(!is_rejected_sampling(hp->k, hp->t, signature->rejection_sampling_counter, message_hash, message, message_len))
-      return 1;
-  }else
+
+  if (hp->do_rejection_sampling) {
+    if (rejection_sampling_status(hp->k, hp->t, signature->rejection_sampling_counter, message_hash, message, message_len) == HORS_REJECTION_SAMPLING_NOT_DONE) return HORS_SIGNATURE_REJECTED;
+  } else
     /* Hashing the message */
-    hash_sha2_256(message_hash, message, message_len);
+    ltc_hash_sha2_256(message_hash, message, message_len);
 
-
+  /* HORS log(t), defining size of the bit slices */
   u32 bit_slice_len = log2(hp->t);
 
-  for(u32 i=0; i<hp->k; i++) {
-    u32 portion_value = read_bits_as_4bytes(message_hash, i+1, bit_slice_len); //TODO
+  for (u32 i = 0; i < hp->k; i++) {
+    u32 portion_value = read_bits_as_4bytes(message_hash, i + 1, bit_slice_len);
 
-    u8 * pointed_signature_portion = &signature->signature[i * BITS_2_BYTES(hp->l)];
-    u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
-    hash_sha2_256(message_hash, pointed_signature_portion, BITS_2_BYTES(hp->l));
+    /* Current signature element (sk) */
+    u8* pointed_signature_portion = &signature->signature[i * BITS_2_BYTES(hp->l)];
 
-    if (memcmp(message_hash, &verifier->pk[portion_value* BITS_2_BYTES(hp->l)],BITS_2_BYTES(hp->l))!=0){
-      printf("Signature is not valid \n");
-      verifier->state++;
-      return 1;
-    }
+    /* Hash the current signature element (sk) for further comparison */
+    u8 sk_hash[HASH_MAX_LENGTH_THRESHOLD];
+    ltc_hash_sha2_256(sk_hash, pointed_signature_portion, BITS_2_BYTES(hp->l));
 
+    /* Compare the hashed current signature element (sk) with public key indexed by portion_value */
+    if (memcmp(sk_hash, &verifier->pk[portion_value * BITS_2_BYTES(hp->l)], BITS_2_BYTES(hp->l)) != 0) return HORS_SIGNATURE_REJECTED;
   }
-  verifier->state++;
-  return 0;
+  return HORS_SIGNATURE_ACCEPTED;
 }
 
+/// Passing the config file, it creates a new hyper parameter struct
+/// \param new_hp Pointer to the hyper parameter struct
+/// \param config_file Path of the config file
+/// \return HORS_NEW_HP_SUCCESS and HORS_NEW_HP_FAILED
+u32 hors_new_hp(hors_hp_t* new_hp, const u8* config_file) {
+  u8 line_buffer[CONFIG_FILE_MAX_LENGTH];
 
-int main(){
-  hors_hp_t  hors_hp;
+  read_file_line(line_buffer, CONFIG_FILE_MAX_LENGTH, NULL);
+
+  while (!read_file_line(line_buffer, CONFIG_FILE_MAX_LENGTH, config_file)) {
+    u8* trimmed_line = str_trim(line_buffer);
+
+    /* Ignore empty lines */
+    if (!strlen(trimmed_line)) continue;
+
+    char* token;
+    char* delim = "=";
+
+    /* Get the first token */
+    token = strtok(trimmed_line, delim);
+    token = str_trim(token);
+
+    /* walk through other tokens */
+    while (token != NULL) {
+      /* If the line is a comment, ignore it */
+      if (token[0] == '#') break;
+
+      if (!strcmp(token, "t")) {
+        if ((token = strtok(NULL, delim))) {
+          token = str_trim_char(token, '#');
+          new_hp->t = strtol(token, NULL, 10);
+        } else
+          return HORS_NEW_HP_FAILED;
+
+      } else if (!strcmp(token, "k")) {
+        if ((token = strtok(NULL, delim))) {
+          token = str_trim_char(token, '#');
+          new_hp->k = strtol(token, NULL, 10);
+        } else
+          return HORS_NEW_HP_FAILED;
+
+      } else if (!strcmp(token, "l")) {
+        if ((token = strtok(NULL, delim))) {
+          token = str_trim_char(token, '#');
+          new_hp->l = strtol(token, NULL, 10);
+        } else
+          return HORS_NEW_HP_FAILED;
+
+      } else if (!strcmp(token, "rejection_sampling")) {
+        if ((token = strtok(NULL, delim))) {
+          token = str_trim_char(token, '#');
+          if (strcmp(token, "true") == 0)
+            new_hp->do_rejection_sampling = 1;
+          else
+            new_hp->do_rejection_sampling = 0;
+        } else
+          return HORS_NEW_HP_FAILED;
+      } else if (!strcmp(token, "seed")) {
+        if ((token = strtok(NULL, delim))) {
+          token = str_trim_char(token, '#');
+          new_hp->seed_file = malloc(strlen(token));
+          memcpy(new_hp->seed_file, token, strlen(token));
+        } else
+          return HORS_NEW_HP_FAILED;
+      }
+      token = strtok(NULL, delim);
+    }
+  }
+  return HORS_NEW_HP_SUCCESS;
+}
+
+int main() {
+  hors_hp_t hors_hp;
   hors_keys_t hors_keys;
   hors_new_hp(&hors_hp, "./config");
   hors_keygen(&hors_keys, &hors_hp);
@@ -250,15 +285,12 @@ int main(){
   hors_signer_t signer = hors_new_signer(&hors_hp, &hors_keys);
   hors_signature_t signature;
   signature.signature = malloc(signer.hp->k * BITS_2_BYTES(signer.hp->l));
-  hors_sign(&signature, &signer , "qweqweqwe", 9);
+  hors_sign(&signature, &signer, "qweqweqwe", 9);
 
-  hors_verifier_t verifier = bftvmhors_new_verifier(hors_keys.pk);
-  printf(">> %d\n", hors_verify(&verifier, &hors_hp, &signature, "aweqweqwe", 9));
+  hors_verifier_t verifier = hors_new_verifier(hors_keys.pk);
 
+  if (hors_verify(&verifier, &hors_hp, &signature, "qweqweqwe", 9) == HORS_SIGNATURE_ACCEPTED)
+    printf("signature is valid\n");
+  else
+    printf("signature is not valid\n");
 }
-
-
-
-
-
-

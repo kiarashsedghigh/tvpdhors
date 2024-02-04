@@ -37,5 +37,3 @@ u32 fnv64_1a(u8 * hash_output, const u8 * input , u64 length){
     memcpy(hash_output, &hash, sizeof(u64));
     return sizeof(u64);
 }
-
-

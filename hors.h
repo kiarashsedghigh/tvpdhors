@@ -3,6 +3,24 @@
 
 #include <bftvmhors/types.h>
 
+#define HORS_NEW_HP_SUCCESS 0
+#define HORS_NEW_HP_FAILED 1
+
+#define HORS_KEYGEN_SUCCESS 0
+#define HORS_KEYGEN_FAILED 1
+
+#define HORS_SIGNATURE_ACCEPTED 0
+#define HORS_SIGNATURE_REJECTED 1
+
+#define HORS_SIGNING_SUCCESS 0
+#define HORS_SIGNING_FAILED 1
+
+#define HORS_REJECTION_SAMPLING_SUCCESS 0
+#define HORS_REJECTION_SAMPLING_FAILED 1
+
+#define HORS_REJECTION_SAMPLING_DONE 0
+#define HORS_REJECTION_SAMPLING_NOT_DONE 1
+
 
 /// Implements the hyper parameters of HORS
 typedef struct hors_hp{
@@ -11,7 +29,6 @@ typedef struct hors_hp{
   u32 t;                      // t parameter of the HORS signature
   u32 l;                      // l parameter of the HORS signature
   u8 * seed_file;             // Seed file
-  u32 sk_seed_len;            // Length of private key seeds in bits
   u8 do_rejection_sampling;   // Do/Don't perform rejection sampling
 }hors_hp_t;
 

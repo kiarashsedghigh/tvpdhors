@@ -3,6 +3,11 @@
 
 #include <bftvmhors/types.h>
 
+#define FILE_OP_SUCCESS 0
+#define FILE_OPEN_ERROR 1
+#define FILE_READ_ERROR 2
+
+
 /// Reads the file line by line
 /// \param line Pointer to the buffer where the line will be stored
 /// \param line_size Size of the buffer for storing the line
