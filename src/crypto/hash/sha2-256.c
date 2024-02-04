@@ -17,5 +17,3 @@ u32 openssl_hash_sha2_256(u8 * hash_output, const u8 * input , u64 length){
   SHA256(input, length, hash_output);
   return SHA256_OUTPUT_LEN;
 }
-
-

@@ -130,5 +130,50 @@ u32 blake2s_224(u8 * hash_output, const u8 * input , u64 length);
 u32 blake2s_256(u8 * hash_output, const u8 * input , u64 length);
 
 
+/// Computes the hash value based on the XXHash-32 by (https://github.com/Cyan4973/xxHash)
+/// \param hash_output Pointer to buffer that the hash will be stored
+/// \param input Pointer to the input that we want the hash value
+/// \param length The length of the input
+/// \return The size of the hash
+u32 xxhash_32(u8 * hash_output, const u8 * input , u64 length);
+
+
+/// Computes the hash value based on the XXHash-64 by (https://github.com/Cyan4973/xxHash)
+/// \param hash_output Pointer to buffer that the hash will be stored
+/// \param input Pointer to the input that we want the hash value
+/// \param length The length of the input
+/// \return The size of the hash
+u32 xxhash_64(u8 * hash_output, const u8 * input , u64 length);
+
+
+/// Computes the hash value based on the XXHash3-64 by (https://github.com/Cyan4973/xxHash)
+/// \param hash_output Pointer to buffer that the hash will be stored
+/// \param input Pointer to the input that we want the hash value
+/// \param length The length of the input
+/// \return The size of the hash
+u32 xxhash3_64(u8 * hash_output, const u8 * input , u64 length);
+
+
+/// Computes the hash value based on the XXHash3-128 by (https://github.com/Cyan4973/xxHash)
+/// \param hash_output Pointer to buffer that the hash will be stored
+/// \param input Pointer to the input that we want the hash value
+/// \param length The length of the input
+/// \return The size of the hash
+u32 xxhash3_128(u8 * hash_output, const u8 * input , u64 length);
+
+
+/// Computes the hash value based on the murmur2-32 by (https://github.com/rurban/smhasher/tree/master)
+/// \param hash_output Pointer to buffer that the hash will be stored
+/// \param input Pointer to the input that we want the hash value
+/// \param length The length of the input
+/// \return The size of the hash
+u32 murmur2_32(u8 * hash_output, const u8 * input , u64 length);
+
+/// Computes the hash value based on the murmur2-64 by (https://github.com/rurban/smhasher/tree/master)
+/// \param hash_output Pointer to buffer that the hash will be stored
+/// \param input Pointer to the input that we want the hash value
+/// \param length The length of the input
+/// \return The size of the hash
+u32 murmur2_64(u8 * hash_output, const u8 * input , u64 length);
 
 #endif

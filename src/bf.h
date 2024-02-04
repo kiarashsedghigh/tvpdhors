@@ -16,6 +16,8 @@
 ///         fnv64_0 fnv64_1 fnv64_1a
 ///         jp_aumasson_siphash
 ///         blake2b_256 blake2b_384 blake2b_512
+///         xxhash_32 xxhash_64 xxhash3_64 xxhash3_128
+///         murmur2_32 murmur2_64
 typedef struct sbf_hp {
   u32 size;                // Size of the SBF
   u32 num_hash_functions;  // Number of hash functions to be used

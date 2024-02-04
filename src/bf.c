@@ -62,7 +62,18 @@ u32 sbf_create(sbf_t *sbf, const sbf_hp_t *sbf_hp) {
     selected_hash_function = blake2s_224;
   else if (strcmp(sbf_hp->hash_family, "blake2s_256") == 0)
     selected_hash_function = blake2s_256;
-
+  else if (strcmp(sbf_hp->hash_family, "xxhash_32") == 0)
+    selected_hash_function = xxhash_32;
+  else if (strcmp(sbf_hp->hash_family, "xxhash_64") == 0)
+    selected_hash_function = xxhash_64;
+  else if (strcmp(sbf_hp->hash_family, "xxhash3_64") == 0)
+    selected_hash_function = xxhash3_64;
+  else if (strcmp(sbf_hp->hash_family, "xxhash3_128") == 0)
+    selected_hash_function = xxhash3_128;
+  else if (strcmp(sbf_hp->hash_family, "murmur2_32") == 0)
+    selected_hash_function = murmur2_32;
+  else if (strcmp(sbf_hp->hash_family, "murmur2_64") == 0)
+    selected_hash_function = murmur2_64;
   else  // Default
     selected_hash_function = ltc_hash_sha2_256;
 
