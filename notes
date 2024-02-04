@@ -1,0 +1,11 @@
+Checks for the correct conversion, multiply of 8 has not been done due to the performance
+rejection sampling uses ltc_sha25
+
+
+
+HORS:
+gcc -w hors.c -o hors utils/file.c  utils/format.c utils/bits.c crypto/hash/sha2-256.c crypto/prng/chcha20.c -lssl -lcrypto -ltomcrypt -lm
+
+
+BFTVMHORS:
+gcc -O3 -w crypto/hash/fnv.c utils/bits.c crypto/hash/jenkins_oaat.c  bftvmhors.c utils/file.c utils/format.c crypto/prng/chcha20.c bf.c crypto/hash/sha2-256.c -o bft  -ltomcrypt -lssl -lcrypto -lm
