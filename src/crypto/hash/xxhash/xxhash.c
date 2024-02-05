@@ -5,12 +5,11 @@
 
 
 u32 xxhash_32(u8 * hash_output, const u8 * input , u64 length){
-
   /* create a hash state */
   XXH32_state_t* const state = XXH32_createState();
 
   /* Initialize state with selected seed */
-  XXH32_reset(&state, 0);
+  XXH32_reset(state, 0);
 
   if (XXH32_update(state, input, length) == XXH_ERROR) abort();
 
@@ -31,7 +30,7 @@ u32 xxhash_64(u8 * hash_output, const u8 * input , u64 length){
   XXH64_state_t* const state = XXH64_createState();
 
   /* Initialize state with selected seed */
-  XXH64_reset(&state, 0);
+  XXH64_reset(state, 0);
 
   if (XXH64_update(state, input, length) == XXH_ERROR) abort();
 

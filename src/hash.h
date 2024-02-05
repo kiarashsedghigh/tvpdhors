@@ -5,7 +5,7 @@
 
 /// This defines the maximum hash length (in Bytes) of all the hash functions
 /// supported
-#define HASH_MAX_LENGTH_THRESHOLD 40
+#define HASH_MAX_LENGTH_THRESHOLD 80
 
 /// Computes the hash value based on the Tomcrypt SHA2-256
 /// \param hash_output Pointer to buffer that the hash will be stored
