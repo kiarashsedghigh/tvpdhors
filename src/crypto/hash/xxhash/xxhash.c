@@ -56,7 +56,7 @@ u32 xxhash3_64(u8 * hash_output, const u8 * input , u64 length){
   /* Produce the final hash value */
   XXH64_hash_t const hash = XXH3_64bits_digest(state);
 
-  memcpy(hash_output, &hash, sizeof(XXH128_hash_t));
+  memcpy(hash_output, &hash, sizeof(XXH64_hash_t));
   XXH3_freeState(state);
 
   return sizeof(XXH64_hash_t);

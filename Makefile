@@ -3,8 +3,8 @@ CFLAGS = -O3 -w -std=c11 -Wall -Wextra
 LDFLAGS = -lssl -lcrypto -ltomcrypt -lm -lxxhash
 
 HORS_SRC = src/hors.c src/crypto/hash/murmur/*.c src/crypto/hash/xxhash/*.c src/crypto/hash/blake/*.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
-BFTVMHORS_SRC = src/bf.c src/crypto/hash/murmur/*.c src/crypto/hash/xxhash/*.c src/crypto/hash/blake/*.c src/bftvmhors.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
-TEST_SRC = hash_test.c src/crypto/hash/murmur/*.c src/crypto/hash/xxhash/*.c src/crypto/hash/blake/*.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
+BFTVMHORS_SRC = src/crypto/hash/wyhash/wyhash.o src/bf.c src/crypto/hash/murmur/*.c src/crypto/hash/xxhash/*.c src/crypto/hash/blake/*.c src/bftvmhors.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
+TEST_SRC = hash_test.c src/crypto/hash/cityhash/cityhash.o src/crypto/hash/wyhash/wyhash.o src/crypto/hash/murmur/*.c src/crypto/hash/xxhash/*.c src/crypto/hash/blake/*.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
 
 HEADER_FILES= bf.h bftvmhors.h hash.h hors.h prng.h types.h
 
@@ -21,14 +21,16 @@ BFTVMHORS:
 		mkdir ./target; \
 	fi
 	$(CC) $(BFTVMHORS_SRC) $(CFLAGS) -o target/bft $(LDFLAGS)
-	cp src/config seed target
+	#cp src/config target
+	cp seed target
 
 HORS:
 	if [ ! -d ./target ]; then \
 		mkdir ./target; \
 	fi
 	$(CC) $(HORS_SRC) $(CFLAGS) -o target/hors $(LDFLAGS)
-	cp src/config seed target
+	#cp src/config target/config_hors
+	cp seed target
 
 TEST:
 	if [ ! -d ./test ]; then \
