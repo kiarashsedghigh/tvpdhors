@@ -1,7 +1,4 @@
 #include <bftvmhors/bits.h>
-#include <bftvmhors/types.h>
-#include <stdio.h>
-#include <string.h>
 
 // TODO generalize?
 u32 read_bits_as_4bytes(const u8* input, u32 nth, u32 bit_slice_len) {
@@ -27,7 +24,7 @@ u32 read_bits_as_4bytes(const u8* input, u32 nth, u32 bit_slice_len) {
     result = input[target_slice_start_byte_index];
 
     /* No shift to the right, only masking the bits on the left side of the slice */
-    result &= (1 << (next_8bit_boundary - target_slice_start_bit_index - 1)) - 1;
+    result &= (1 << (next_8bit_boundary - target_slice_start_bit_index)) - 1;
 
     /* Reading the remaining bits of the slice */
     bit_slice_len -= next_8bit_boundary - target_slice_start_bit_index;
@@ -35,12 +32,12 @@ u32 read_bits_as_4bytes(const u8* input, u32 nth, u32 bit_slice_len) {
     u32 num_of_rem_bits = bit_slice_len % 8;
 
     for (u32 i = 0; i < num_of_rem_bytes; i++) {
-      result << 8;
+      result <<= 8;
       result |= input[next_8bit_boundary / 8 + i];
     }
 
     /* Adding the remaining bits to the result */
-    result = result << num_of_rem_bits;
+    result <<= num_of_rem_bits;
     result |= input[next_8bit_boundary / 8 + num_of_rem_bytes] >> (8 - num_of_rem_bits);
   }
   return result;
