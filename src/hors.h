@@ -61,6 +61,17 @@ typedef struct hors_verifier{
 
 
 
+u32 hors_new_hp(hors_hp_t* new_hp, const u8* config_file);
+u32 hors_verify(hors_verifier_t* verifier, hors_hp_t* hp, hors_signature_t* signature, u8* message, u64 message_len);
+hors_verifier_t hors_new_verifier(u8* pk);
+u32 hors_sign(hors_signature_t* signature, hors_signer_t* signer, u8* message, u64 message_len);
+hors_signer_t hors_new_signer(hors_hp_t* hp, hors_keys_t* keys);
+u32 hors_keygen(hors_keys_t* keys, hors_hp_t* hp);
+
+
+
+
+
 
 
 #endif

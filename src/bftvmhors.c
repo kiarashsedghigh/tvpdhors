@@ -16,10 +16,6 @@
 
 
 
-/// BFTVMHORS key generation
-/// \param keys Pointer to the BFTVMHORS keys
-/// \param hp Pointer to the BFTVMHORS HP
-/// \return BFTVMHORS_KEYGEN_SUCCESS, BFTVMHORS_KEYGEN_FAILED
 u32 bftvmhors_keygen(bftvmhors_keys_t* keys, bftvmhors_hp_t* hp) {
   /* Read the seed file */
   u32 seed_len = read_file(&keys->seed, hp->seed_file);
@@ -152,10 +148,7 @@ static u32 rejection_sampling_status(u32 k, u32 t, u32 ctr, u8* message_hash, u8
 }
 
 
-/// Passing the BFTVMHORS hyper parameters and the keys it creates a BFTVMHORS signer
-/// \param hp BFTVMHORS hyper parameter
-/// \param keys BFTVMHORS keys
-/// \return BFTVMHORS signer
+
 bftvmhors_signer_t bftvmhors_new_signer(bftvmhors_hp_t* hp, bftvmhors_keys_t* keys) {
   bftvmhors_signer_t signer;
   signer.state = 0;
@@ -165,12 +158,7 @@ bftvmhors_signer_t bftvmhors_new_signer(bftvmhors_hp_t* hp, bftvmhors_keys_t* ke
 }
 
 
-/// BFTVMHORS signer
-/// \param signature Pointer to the output signature struct
-/// \param signer Pointer to the BFTVMHORS signer struct
-/// \param message  Pointer to the message to check signature on
-/// \param message_len  Length of the input message
-/// \return BFTVMHORS_SIGNING_SUCCESS, BFTVMHORS_SIGNING_FAILED
+
 u32 bftvmhors_sign(bftvmhors_signature_t* signature, bftvmhors_signer_t* signer, u8* message,
                    u64 message_len) {
   /* Check for the signer state and the remaining keys */
@@ -214,9 +202,7 @@ u32 bftvmhors_sign(bftvmhors_signature_t* signature, bftvmhors_signer_t* signer,
   return BFTVMHORS_SIGNING_SUCCESS;
 }
 
-/// Passing the BFTVMHORS public key (sbf_t type), returns a BFTVMHORS verifier
-/// \param pk BFTVMHORS public key which is a SBF
-/// \return BFTVMHORS verifier
+
 bftvmhors_verifier_t bftvmhors_new_verifier(sbf_t* pk) {
   bftvmhors_verifier_t verifier;
   verifier.state = 0;
@@ -224,13 +210,7 @@ bftvmhors_verifier_t bftvmhors_new_verifier(sbf_t* pk) {
   return verifier;
 }
 
-/// BFTVMHORS verifier
-/// \param verifier Pointer to the BFTVMHORS verifier struct
-/// \param hp Pointer to the BFTVMHORS hyper parameter struct
-/// \param signature Pointer to the BFTVMHORS signature struct
-/// \param message  Pointer to the message to check signature on
-/// \param message_len Length of the input message
-/// \return BFTVMHORS_SIGNATURE_VERIFIED and BFTVMHORS_SIGNATURE_REJECTED
+
 u32 bftvmhors_verify(bftvmhors_verifier_t* verifier, bftvmhors_hp_t* hp,
                      bftvmhors_signature_t* signature, u8* message, u64 message_len) {
   /* Verifier is no longer verifying any message */
@@ -278,10 +258,7 @@ u32 bftvmhors_verify(bftvmhors_verifier_t* verifier, bftvmhors_hp_t* hp,
   return BFTVMHORS_SIGNATURE_ACCEPTED;
 }
 
-/// Passing the config file, it creates a new hyper parameter struct
-/// \param new_hp Pointer to the hyper parameter struct
-/// \param config_file Path of the config file
-/// \return BFTVMHORS_NEW_HP_SUCCESS and BFTVMHORS_NEW_HP_FAILED
+
 u32 bftvmhors_new_hp(bftvmhors_hp_t* new_hp, const u8* config_file) {
   u8 line_buffer[CONFIG_FILE_MAX_LENGTH];
 
@@ -393,30 +370,6 @@ u32 bftvmhors_new_hp(bftvmhors_hp_t* new_hp, const u8* config_file) {
   return BFTVMHORS_NEW_HP_SUCCESS;
 }
 
-/// Destroys BFTVMHORS hyper parameter
-/// \param bftvmhors_hp Pointer to the BFTVMHORS hyper parameter struct
+
 void bftvmhors_destroy_hp(bftvmhors_hp_t* bftvmhors_hp) { free(bftvmhors_hp->seed_file); }
 
-
-int main() {
-  bftvmhors_hp_t bftvmhors_hp;
-  bftvmhors_keys_t bftvmhors_keys;
-  bftvmhors_new_hp(&bftvmhors_hp, "./config");
-  bftvmhors_keygen(&bftvmhors_keys, &bftvmhors_hp);
-
-  /* Signer */
-  bftvmhors_signer_t signer = bftvmhors_new_signer(&bftvmhors_hp, &bftvmhors_keys);
-  bftvmhors_signature_t signature;
-  signature.signature = malloc(signer.hp->k * BITS_2_BYTES(signer.hp->l));
-  bftvmhors_sign(&signature, &signer, "aaa", 3);
-
-  /* Verifier */
-  bftvmhors_verifier_t verifier = bftvmhors_new_verifier(&bftvmhors_keys.pk);
-
-  if (bftvmhors_verify(&verifier, &bftvmhors_hp, &signature, "aqa", 3)==BFTVMHORS_SIGNATURE_ACCEPTED)
-    printf("signature is valid\n");
-  else
-    printf("signature is not valid\n");
-
-  bftvmhors_destroy_hp(&bftvmhors_hp);
-}

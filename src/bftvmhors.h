@@ -77,4 +77,43 @@ void bftvmhors_destroy_hp(bftvmhors_hp_t *bftvmhors_hp);
 /// \return 0 if successful, 1 otherwise
 u32 bftvmhors_keygen(bftvmhors_keys_t *keys, bftvmhors_hp_t *hp);
 
+
+
+
+
+/// Passing the BFTVMHORS hyper parameters and the keys it creates a BFTVMHORS signer
+/// \param hp BFTVMHORS hyper parameter
+/// \param keys BFTVMHORS keys
+/// \return BFTVMHORS signer
+bftvmhors_signer_t bftvmhors_new_signer(bftvmhors_hp_t* hp, bftvmhors_keys_t* keys);
+
+/// BFTVMHORS signer
+/// \param signature Pointer to the output signature struct
+/// \param signer Pointer to the BFTVMHORS signer struct
+/// \param message  Pointer to the message to check signature on
+/// \param message_len  Length of the input message
+/// \return BFTVMHORS_SIGNING_SUCCESS, BFTVMHORS_SIGNING_FAILED
+u32 bftvmhors_sign(bftvmhors_signature_t* signature, bftvmhors_signer_t* signer, u8* message,
+                   u64 message_len);
+
+
+/// Passing the BFTVMHORS public key (sbf_t type), returns a BFTVMHORS verifier
+/// \param pk BFTVMHORS public key which is a SBF
+/// \return BFTVMHORS verifier
+bftvmhors_verifier_t bftvmhors_new_verifier(sbf_t* pk);
+
+/// BFTVMHORS verifier
+/// \param verifier Pointer to the BFTVMHORS verifier struct
+/// \param hp Pointer to the BFTVMHORS hyper parameter struct
+/// \param signature Pointer to the BFTVMHORS signature struct
+/// \param message  Pointer to the message to check signature on
+/// \param message_len Length of the input message
+/// \return BFTVMHORS_SIGNATURE_VERIFIED and BFTVMHORS_SIGNATURE_REJECTED
+u32 bftvmhors_verify(bftvmhors_verifier_t* verifier, bftvmhors_hp_t* hp,
+                     bftvmhors_signature_t* signature, u8* message, u64 message_len);
+
+
+
+
+
 #endif

@@ -20,17 +20,18 @@ BFTVMHORS:
 	if [ ! -d ./target ]; then \
 		mkdir ./target; \
 	fi
-	$(CC) $(BFTVMHORS_SRC) $(CFLAGS) -o target/bft $(LDFLAGS)
+	$(CC) -c $(BFTVMHORS_SRC) $(CFLAGS) $(LDFLAGS)
 	#cp src/config target
-	cp seed target
+	#cp seed target
 
 HORS:
 	if [ ! -d ./target ]; then \
 		mkdir ./target; \
 	fi
-	$(CC) $(HORS_SRC) $(CFLAGS) -o target/hors $(LDFLAGS)
+	$(CC) -c $(HORS_SRC) $(CFLAGS) $(LDFLAGS)
+	#cp target/hors.o /usr/lib/
 	#cp src/config target/config_hors
-	cp seed target
+	#cp seed target
 
 TEST:
 	if [ ! -d ./test ]; then \
