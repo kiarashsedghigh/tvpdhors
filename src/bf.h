@@ -1,7 +1,7 @@
 #ifndef BFTVMHORS_BF_H
 #define BFTVMHORS_BF_H
 
-#include "types.h"
+#include <bftvmhors/types.h>
 
 
 #define SBF_ELEMENT_EXISTS 0
@@ -21,7 +21,7 @@
 typedef struct sbf_hp {
   u32 size;                // Size of the SBF
   u32 num_hash_functions;  // Number of hash functions to be used
-  u8 *hash_family;  // Family of the functions to be used for hashing. #TODO Talk about the list
+  u8 *hash_family;  // Family of the functions to be used for hashing
 } sbf_hp_t;
 
 /// Creates the hyper parameters of the SBF
@@ -40,8 +40,8 @@ typedef struct sbf {
 } sbf_t;
 
 /// Creates a new SBF with the given hyper parameters
+/// \param sbf The SBF struct
 /// \param sbf_hp The SBF hyper parameters
-/// \return New SBF (sbf_t)
 u32 sbf_create(sbf_t *sbf, const sbf_hp_t *sbf_hp);
 
 /// Destroys the given SBF
@@ -58,7 +58,7 @@ void sbf_insert(const sbf_t *sbf, const u8 *input, u64 length);
 /// \param sbf The SBF we want to check the element existence in
 /// \param input The input to be inserted into the SBF
 /// \param length The length of the input
-/// \return Returns 1 if the element exists in the SBF, otherwise, 0
+/// \return SBF_ELEMENT_EXISTS , SBF_ELEMENT_ABSENTS
 u32 sbf_check(const sbf_t *sbf, const u8 *input, u64 input_length);
 
 #endif

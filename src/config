@@ -47,6 +47,9 @@ h = 120
 #  blake2s_128 blake2s_160 blake2s_224 blake2s_256
 #  xxhash_32 xxhash_64 xxhash3_64 xxhash3_128
 #  murmur2_32 murmur2_64(NEED WORK)
+#  Wyhash
+#  Cityhash
+
 h_family = murmur2_64
 ## Size of the SBF (in bits)
 m = 1048576
