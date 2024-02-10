@@ -52,13 +52,13 @@ void sbf_destroy(const sbf_t *sbf);
 /// \param sbf The SBF we want to insert into
 /// \param input The input to be inserted into the SBF
 /// \param length The length of the input
-void sbf_insert(const sbf_t *sbf, const u8 *input, u64 length);
+void sbf_insert(const sbf_t *sbf, u8 *input, u64 length);
 
 /// Checks if an element is in the SBF
 /// \param sbf The SBF we want to check the element existence in
 /// \param input The input to be inserted into the SBF
 /// \param length The length of the input
 /// \return SBF_ELEMENT_EXISTS , SBF_ELEMENT_ABSENTS
-u32 sbf_check(const sbf_t *sbf, const u8 *input, u64 input_length);
+u32 sbf_check(const sbf_t *sbf, u8 *input, u64 length);
 
 #endif

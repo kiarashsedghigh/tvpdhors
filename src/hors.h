@@ -3,6 +3,15 @@
 
 #include <bftvmhors/types.h>
 
+double hors_get_keygen_time();
+double hors_get_sign_time();
+double hors_get_verify_time();
+
+#define HORS_KEYGEN_TIME hors_get_keygen_time()
+#define HORS_SIGN_TIME hors_get_sign_time()
+#define HORS_VERIFY_TIME hors_get_verify_time()
+
+
 #define HORS_NEW_HP_SUCCESS 0
 #define HORS_NEW_HP_FAILED 1
 
@@ -28,6 +37,7 @@ typedef struct hors_hp{
   u32 k;                      // k parameter of the HORS signature
   u32 t;                      // t parameter of the HORS signature
   u32 l;                      // l parameter of the HORS signature
+  u32 lpk;                    // Size of the public key portion
   u8 * seed_file;             // Seed file
   u8 do_rejection_sampling;   // Do/Don't perform rejection sampling
 }hors_hp_t;

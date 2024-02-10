@@ -4,12 +4,36 @@
 #include <bftvmhors/format.h>
 #include <bftvmhors/hors.h>
 #include <bftvmhors/prng.h>
+#include <bftvmhors/tv_params.h>
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define CONFIG_FILE_MAX_LENGTH 300
+
+
+/* Time information variables/functions for HORS */
+#ifdef TIMEKEEPING
+struct timeval start_time, end_time;
+
+static double hors_keygen_time = 0;
+static double hors_sign_time = 0;
+static double hors_verify_time = 0;
+
+double hors_get_keygen_time(){
+    return hors_keygen_time;
+}
+double hors_get_sign_time(){
+    return hors_sign_time;
+}
+double hors_get_verify_time(){
+    return hors_verify_time;
+}
+#endif
+
+
+
+
 
 /// HORS key generation
 /// \param keys Pointer to the HORS keys
@@ -25,14 +49,27 @@ u32 hors_keygen(hors_keys_t* keys, hors_hp_t* hp) {
   prng_chacha20(&keys->sk, seed, seed_len, BITS_2_BYTES(hp->l) * hp->t);
 
   /* Generate the PK */
-  keys->pk = malloc(BITS_2_BYTES(hp->l) * hp->t);
+  keys->pk = malloc(BITS_2_BYTES(hp->lpk) * hp->t);
 
+#ifdef TIMEKEEPING
+    gettimeofday(&start_time, NULL);
+#endif
   /* Compute OWF of privates as public key */
   for (u32 i = 0; i < hp->t; i++) {
     u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
-    u32 hash_size = ltc_hash_sha2_256(message_hash, keys->sk + i * BITS_2_BYTES(hp->l), BITS_2_BYTES(hp->l));
-    memcpy(keys->pk + i * BITS_2_BYTES(hp->l), message_hash, hash_size);
+
+#ifdef TVHASHOPTIMIZED
+    blake2s_128(message_hash, keys->sk + i * BITS_2_BYTES(hp->l), BITS_2_BYTES(hp->l));
+#else
+    ltc_hash_sha2_256(message_hash, keys->sk + i * BITS_2_BYTES(hp->l), BITS_2_BYTES(hp->l));
+#endif
+    memcpy(keys->pk + i * BITS_2_BYTES(hp->lpk), message_hash, BITS_2_BYTES(hp->lpk));
   }
+
+#ifdef TIMEKEEPING
+    gettimeofday(&end_time, NULL);
+    hors_keygen_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+#endif
 
   return HORS_KEYGEN_SUCCESS;
 }
@@ -141,13 +178,15 @@ hors_signer_t hors_new_signer(hors_hp_t* hp, hors_keys_t* keys) {
 u32 hors_sign(hors_signature_t* signature, hors_signer_t* signer, u8* message, u64 message_len) {
   u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
 
+#ifdef TIMEKEEPING
+    gettimeofday(&start_time, NULL);
+#endif
   /* Perform rejection sampling */
   if (signer->hp->do_rejection_sampling) {
-    if (rejection_sampling(signer->hp->k, signer->hp->t, &signature->rejection_sampling_counter, message_hash, message, message_len) == HORS_REJECTION_SAMPLING_FAILED) return HORS_SIGNING_FAILED;
-
+      if (rejection_sampling(signer->hp->k, signer->hp->t, &signature->rejection_sampling_counter, message_hash, message, message_len) == HORS_REJECTION_SAMPLING_FAILED) return HORS_SIGNING_FAILED;
   } else
-    /* Hashing the message */
-    ltc_hash_sha2_256(message_hash, message, message_len);
+      /* Hashing the message */
+      ltc_hash_sha2_256(message_hash, message, message_len);
 
   /* HORS log(t), defining size of the bit slices */
   u32 bit_slice_len = log2(signer->hp->t);
@@ -157,6 +196,10 @@ u32 hors_sign(hors_signature_t* signature, hors_signer_t* signer, u8* message, u
     u32 portion_value = read_bits_as_4bytes(message_hash, i + 1, bit_slice_len);
     memcpy(&signature->signature[i * BITS_2_BYTES(signer->hp->l)], &signer->keys->sk[portion_value * BITS_2_BYTES(signer->hp->l)], BITS_2_BYTES(signer->hp->l));
   }
+#ifdef TIMEKEEPING
+    gettimeofday(&end_time, NULL);
+    hors_sign_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+#endif
   return HORS_SIGNING_SUCCESS;
 }
 
@@ -180,6 +223,9 @@ hors_verifier_t hors_new_verifier(u8* pk) {
 u32 hors_verify(hors_verifier_t* verifier, hors_hp_t* hp, hors_signature_t* signature, u8* message, u64 message_len) {
   u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
 
+#ifdef TIMEKEEPING
+    gettimeofday(&start_time, NULL);
+#endif
   if (hp->do_rejection_sampling) {
     if (rejection_sampling_status(hp->k, hp->t, signature->rejection_sampling_counter, message_hash, message, message_len) == HORS_REJECTION_SAMPLING_NOT_DONE) return HORS_SIGNATURE_REJECTED;
   } else
@@ -197,11 +243,27 @@ u32 hors_verify(hors_verifier_t* verifier, hors_hp_t* hp, hors_signature_t* sign
 
     /* Hash the current signature element (sk) for further comparison */
     u8 sk_hash[HASH_MAX_LENGTH_THRESHOLD];
-    ltc_hash_sha2_256(sk_hash, pointed_signature_portion, BITS_2_BYTES(hp->l));
+
+#ifdef TVHASHOPTIMIZED
+      blake2s_128(sk_hash, pointed_signature_portion, BITS_2_BYTES(hp->l));
+#else
+      ltc_hash_sha2_256(sk_hash, pointed_signature_portion, BITS_2_BYTES(hp->l));
+#endif
 
     /* Compare the hashed current signature element (sk) with public key indexed by portion_value */
-    if (memcmp(sk_hash, &verifier->pk[portion_value * BITS_2_BYTES(hp->l)], BITS_2_BYTES(hp->l)) != 0) return HORS_SIGNATURE_REJECTED;
+    if (memcmp(sk_hash, &verifier->pk[portion_value * BITS_2_BYTES(hp->lpk)], BITS_2_BYTES(hp->lpk)) != 0){
+#ifdef TIMEKEEPING
+        /* We put the timing here as to get timing until the point that the signature is valid */
+        gettimeofday(&end_time, NULL);
+        hors_verify_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+#endif
+        return HORS_SIGNATURE_REJECTED;
+    }
   }
+#ifdef TIMEKEEPING
+    gettimeofday(&end_time, NULL);
+    hors_verify_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+#endif
   return HORS_SIGNATURE_ACCEPTED;
 }
 
@@ -246,6 +308,13 @@ u32 hors_new_hp(hors_hp_t* new_hp, const u8* config_file) {
         } else
           return HORS_NEW_HP_FAILED;
 
+      } else if (!strcmp(token, "lpk")) {
+          if ((token = strtok(NULL, delim))) {
+              token = str_trim_char(token, '#');
+              new_hp->lpk = strtol(token, NULL, 10);
+          } else
+              return HORS_NEW_HP_FAILED;
+
       } else if (!strcmp(token, "l")) {
         if ((token = strtok(NULL, delim))) {
           token = str_trim_char(token, '#');
@@ -273,6 +342,17 @@ u32 hors_new_hp(hors_hp_t* new_hp, const u8* config_file) {
       token = strtok(NULL, delim);
     }
   }
+
+
+
+#ifdef TVHASHOPTIMIZED
+  new_hp->l = TVOPTIMIZED_L;
+  new_hp->k = TVOPTIMIZED_K;
+  new_hp->t = TVOPTIMIZED_T;
+  new_hp->lpk = TVOPTIMIZED_LPK;
+
+#endif
+
   return HORS_NEW_HP_SUCCESS;
 }
 

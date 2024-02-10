@@ -19,7 +19,6 @@ s16 ohbf_primes[] = {0,2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 5
 static u32 ohbf_create_partitions(u16 ** partitions, u32 required_size, u32 num_of_partitions){
     /* Allocate partition size table */
     *partitions = (u16 *) malloc(sizeof(u16)*(num_of_partitions+2));
-
     /* Find the closest prime to the required_size/num_of_partitions */
     u32 closest_prime_dist = 1 << 10;
     u32 closest_prime_idx = 0;
@@ -132,19 +131,20 @@ void ohbf_destroy(const ohbf_t *ohbf) {
 
 
 void ohbf_insert(const ohbf_t *ohbf, const u8 *input, u64 length) {
-
     u8 hash_buffer[HASH_MAX_LENGTH_THRESHOLD];
 
+#ifndef TVHASHOPTIMIZED
     /* Hash the input */
     u32 hash_size = ohbf->hash_function(hash_buffer, input, length);
-
     BIGNUM *hash_bn = BN_new();
     BIGNUM *ohbf_partition_size_bn = BN_new();
     BIGNUM *target_idx_bn = BN_new();
 
     /* Convert the computed hash to a BIGNUM */
     BN_bin2bn(hash_buffer, hash_size, hash_bn);
-
+#else
+    u32 hash_size = xxhash3_128(hash_buffer, input, length);
+#endif
 
     for (u32 i = 0; i < ohbf->num_of_mod_operations; i++) {
 
@@ -153,7 +153,8 @@ void ohbf_insert(const ohbf_t *ohbf, const u8 *input, u64 length) {
          * We aim to compute the following to get an index for the OHBF:
          *              target_idx = hash % m_i,  where m_i is the length of each partition
          * */
-
+        u32 target_idx;
+#ifndef TVHASHOPTIMIZED
         /* Convert the partition size to the BigNum */
         BN_set_word(ohbf_partition_size_bn, ohbf->partitions[i]);
 
@@ -161,9 +162,10 @@ void ohbf_insert(const ohbf_t *ohbf, const u8 *input, u64 length) {
         BN_mod(target_idx_bn, hash_bn, ohbf_partition_size_bn, BN_CTX_new());
 
         /* Converting the result to integer in base 10 */
-        u32 target_idx = strtol(BN_bn2dec(target_idx_bn), NULL, 10);
-
-
+        target_idx = strtol(BN_bn2dec(target_idx_bn), NULL, 10);
+#else
+        target_idx = *(u64 *)hash_buffer % ohbf->partitions[i];
+#endif
         /* Read the target byte from the target partition and set the appropriate bit and write back */
         u8 * target_partition = &ohbf->bv[ohbf->partitions[i]];
         u8 ohbf_target_byte = target_partition[BITS_2_BYTES(target_idx)];
@@ -173,27 +175,31 @@ void ohbf_insert(const ohbf_t *ohbf, const u8 *input, u64 length) {
 }
 
 
-u32 ohbf_check(const ohbf_t *ohbf, const u8 *input, u64 input_length) {
+u32 ohbf_check(const ohbf_t *ohbf, const u8 *input, u64 length) {
     u8 hash_buffer[HASH_MAX_LENGTH_THRESHOLD];
-    u32 hash_size = ohbf->hash_function(hash_buffer, input, input_length);
 
+#ifndef TVHASHOPTIMIZED
+    /* Hash the input */
+    u32 hash_size = ohbf->hash_function(hash_buffer, input, length);
     BIGNUM *hash_bn = BN_new();
     BIGNUM *ohbf_partition_size_bn = BN_new();
     BIGNUM *target_idx_bn = BN_new();
 
     /* Convert the computed hash to a BIGNUM */
     BN_bin2bn(hash_buffer, hash_size, hash_bn);
-
-    /* Convert the computed hash to a BIGNUM */
-    BN_bin2bn(hash_buffer, hash_size, hash_bn);
+#else
+    u32 hash_size = xxhash3_128(hash_buffer, input, length);
+#endif
 
     for (u32 i = 0; i < ohbf->num_of_mod_operations; i++) {
+
         /* Convert the hash value to BigNum for further evaluations.
          *
          * We aim to compute the following to get an index for the OHBF:
          *              target_idx = hash % m_i,  where m_i is the length of each partition
          * */
-
+        u32 target_idx;
+#ifndef TVHASHOPTIMIZED
         /* Convert the partition size to the BigNum */
         BN_set_word(ohbf_partition_size_bn, ohbf->partitions[i]);
 
@@ -201,7 +207,10 @@ u32 ohbf_check(const ohbf_t *ohbf, const u8 *input, u64 input_length) {
         BN_mod(target_idx_bn, hash_bn, ohbf_partition_size_bn, BN_CTX_new());
 
         /* Converting the result to integer in base 10 */
-        u32 target_idx = strtol(BN_bn2dec(target_idx_bn), NULL, 10);
+        target_idx = strtol(BN_bn2dec(target_idx_bn), NULL, 10);
+#else
+        target_idx = *(u64 *)hash_buffer % ohbf->partitions[i];
+#endif
 
         /* Read the target byte from the target partition and check for the set/unset state of the desired bit */
         u8 * target_partition = &ohbf->bv[ohbf->partitions[i]];

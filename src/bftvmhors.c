@@ -5,19 +5,90 @@
 #include <bftvmhors/format.h>
 #include <bftvmhors/hash.h>
 #include <bftvmhors/prng.h>
+#include <bftvmhors/tv_params.h>
 #include <math.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/time.h>
-#include <time.h>
+#include <pthread.h>
+
+/* Time information variables/functions for BFTVMHORS */
+#ifdef TIMEKEEPING
+struct timeval start_time, end_time;
+
+static double bftvmhors_keygen_time = 0;
+static double bftvmhors_sign_time = 0;
+static double bftvmhors_verify_time = 0;
+
+double bftvmhors_get_keygen_time(){
+    return bftvmhors_keygen_time;
+}
+double bftvmhors_get_sign_time(){
+    return bftvmhors_sign_time;
+}
+double bftvmhors_get_verify_time(){
+    return bftvmhors_verify_time;
+}
+#endif
 
 #define CONFIG_FILE_MAX_LENGTH 300
 
 
+/// Struct for the parameters needed to be passed to the running thread of the keygen
+typedef struct bftvmhors_keygen_thread_argument{
+    u8*current_state_sks;       // Private keys of the current state
+    u32 private_key_start;      // Index of the first key
+    u32 private_key_end;        // Index of the last key
+    bftvmhors_keys_t* keys;     // Keys
+    bftvmhors_hp_t* hp;         // Hyper parameters
+    u32 state;                  // State of the signer
+}bftvmhors_keygen_thread_argument_t;
+
+
+/// Running thread of the keygen
+/// \param args Struct for the parameters needed to be passed to the running thread of the keygen
+void bftvmhors_keygen_thread(bftvmhors_keygen_thread_argument_t * args){
+
+    for(u32 j=args->private_key_start; j<args->private_key_end; j++) {
+        u8 *hors_sk = &args->current_state_sks[j * BITS_2_BYTES(args->hp->l)];
+
+
+#ifdef TVHASHOPTIMIZED
+
+        /* Add state and index to the private key */ //TODO little endian/big endin with int *
+          hors_sk[0] += j;
+          hors_sk[0] += args->state;
+
+    #ifdef OHBF
+          printf("OH");
+          ohbf_insert(&args->keys->pk, hors_sk, BITS_2_BYTES(args->hp->l));
+    #else
+          sbf_insert(&args->keys->pk, hors_sk, BITS_2_BYTES(args->hp->l));
+    #endif
+
+#else
+        u8 * concat_buffer; u32 concat_buffer_length;
+        /* Concatenating the HORS private key with index and state sk||i||state */
+        concat_buffer = malloc(BITS_2_BYTES(args->hp->l) + 2 * sizeof(u32));
+        concat_buffer_length = concat_buffers(concat_buffer, hors_sk, BITS_2_BYTES(args->hp->l), &j, sizeof(u32));
+        concat_buffer_length = concat_buffers(concat_buffer, concat_buffer, concat_buffer_length, &args->state, sizeof(u32));
+#ifdef OHBF
+        ohbf_insert(&args->keys->pk, concat_buffer, concat_buffer_length);
+#else
+        sbf_insert(&args->keys->pk, concat_buffer, concat_buffer_length);
+#endif
+        free(concat_buffer);
+
+#endif
+
+
+    }
+    pthread_exit(NULL);
+}
+
+
 
 u32 bftvmhors_keygen(bftvmhors_keys_t* keys, bftvmhors_hp_t* hp) {
-  /* Read the seed file */
+    /* Read the seed file */
   u32 seed_len = read_file(&keys->seed, hp->seed_file);
 
   /* Set the number of keys */
@@ -28,7 +99,11 @@ u32 bftvmhors_keygen(bftvmhors_keys_t* keys, bftvmhors_hp_t* hp) {
                 BITS_2_BYTES(hp->sk_seed_len) * hp->N);
 
   /* Generate the PK */
+#ifdef OHBF
+    ohbf_create(&keys->pk, &hp->ohbf_hp);
+#else
   sbf_create(&keys->pk, &hp->sbf_hp);
+#endif
 
   /* Add all the private keys to the SBF */
   for (u32 i = 0; i < hp->N; i++) {
@@ -38,20 +113,91 @@ u32 bftvmhors_keygen(bftvmhors_keys_t* keys, bftvmhors_hp_t* hp) {
     u8*current_state_sks;
     prng_chacha20(&current_state_sks, current_state_sk_seed, BITS_2_BYTES(hp->sk_seed_len), BITS_2_BYTES(hp->l) * hp->t);
 
+#ifdef TIMEKEEPING
+      gettimeofday(&start_time, NULL);
+#endif
     /* Inserting generated private keys into the SBF */
+#ifdef MULTITHREAD
+    u32 number_of_threads = hp->t/BFTVMHORS_KEYGEN_THREAD_CAPACITY;
+    pthread_t * threads = malloc(sizeof(pthread_t) * number_of_threads);
+
+    bftvmhors_keygen_thread_argument_t thread_arg_template = {
+            current_state_sks, 0, 0, keys, hp, i
+    };
+
+    struct bftvmhors_keygen_thread_argument * args = malloc(sizeof(bftvmhors_keygen_thread_argument_t) * number_of_threads);
+    for(int i=0;i<number_of_threads;i++){
+        thread_arg_template.private_key_start = i*BFTVMHORS_KEYGEN_THREAD_CAPACITY;
+        thread_arg_template.private_key_end = (i+1)*BFTVMHORS_KEYGEN_THREAD_CAPACITY-1;
+        args[i] = thread_arg_template;
+    }
+#ifdef TIMEKEEPING
+      gettimeofday(&start_time, NULL);
+#endif
+    for(int i=0;i<number_of_threads;i++)
+        pthread_create(&threads[i], NULL, bftvmhors_keygen_thread, (void *)&args[i]);
+
+    for (int i = 0; i < number_of_threads; ++i)
+        pthread_join(threads[i], NULL);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#else
+
     for (u32 j = 0; j < hp->t; j++) {
       u8* hors_sk = &current_state_sks[j * BITS_2_BYTES(hp->l)];
 
-      /* Concatenating the HORS private key with index and */
-      u8 * concat_buffer = malloc(BITS_2_BYTES(hp->l) + 2 * sizeof(u32));
-      u32 concat_buffer_length = concat_buffers(concat_buffer, hors_sk, BITS_2_BYTES(hp->l), &j, sizeof(u32));
+#ifdef TVHASHOPTIMIZED
+    /* Add state and index to the private key */ //TODO little endian/big endin with int *
+    hors_sk[0] += i;
+    hors_sk[0] += j;
+
+    #ifdef OHBF
+          ohbf_insert(&keys->pk, hors_sk, BITS_2_BYTES(hp->l));
+    #else
+          sbf_insert(&keys->pk, hors_sk, BITS_2_BYTES(hp->l));
+    #endif
+
+#else
+      u8 * concat_buffer; u32 concat_buffer_length;
+      /* Concatenating the HORS private key with index and state sk||i||state */
+      concat_buffer = malloc(BITS_2_BYTES(hp->l) + 2 * sizeof(u32));
+      concat_buffer_length = concat_buffers(concat_buffer, hors_sk, BITS_2_BYTES(hp->l), &j, sizeof(u32));
       concat_buffer_length = concat_buffers(concat_buffer, concat_buffer, concat_buffer_length, &i, sizeof(u32));
+    #ifdef OHBF
+            ohbf_insert(&keys->pk, concat_buffer, concat_buffer_length);
+    #else
+            sbf_insert(&keys->pk, concat_buffer, concat_buffer_length);
+    #endif
+            free(concat_buffer);
 
-      /* Insert the sk||i||state to the SBF */
-      sbf_insert(&keys->pk, concat_buffer, concat_buffer_length);
+#endif
 
-      free(concat_buffer);
+
     }
+#endif
+
+#ifdef TIMEKEEPING
+   gettimeofday(&end_time, NULL);
+   bftvmhors_keygen_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+#endif
     free(current_state_sks);
   }
   return BFTVMHORS_KEYGEN_SUCCESS;
@@ -166,6 +312,9 @@ u32 bftvmhors_sign(bftvmhors_signature_t* signature, bftvmhors_signer_t* signer,
 
   u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
 
+#ifdef TIMEKEEPING
+    gettimeofday(&start_time, NULL);
+#endif
   /* Perform rejection sampling */
   if (signer->hp->do_rejection_sampling) {
     if (rejection_sampling(signer->hp->k, signer->hp->t,
@@ -195,7 +344,10 @@ u32 bftvmhors_sign(bftvmhors_signature_t* signature, bftvmhors_signer_t* signer,
            current_state_sk_keys + portion_value * BITS_2_BYTES(signer->hp->l),
            BITS_2_BYTES(signer->hp->l));
   }
-
+#ifdef TIMEKEEPING
+    gettimeofday(&end_time, NULL);
+   bftvmhors_sign_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+#endif
   free(current_state_sk_keys);
   signer->state++;
 
@@ -217,6 +369,10 @@ u32 bftvmhors_verify(bftvmhors_verifier_t* verifier, bftvmhors_hp_t* hp,
   if (verifier->state == hp->N) return BFTVMHORS_SIGNATURE_REJECTED;
 
   u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
+
+#ifdef TIMEKEEPING
+    gettimeofday(&start_time, NULL);
+#endif
 
   /* Check if the received signature has done the rejection sampling */
   if (hp->do_rejection_sampling) {
@@ -246,13 +402,39 @@ u32 bftvmhors_verify(bftvmhors_verifier_t* verifier, bftvmhors_hp_t* hp,
     concat_buffer_length = concat_buffers(concat_buffer, concat_buffer, concat_buffer_length,
                                           &verifier->state, sizeof(u32));
 
-    /* Check if the value exists in the SBF */
-    if (sbf_check(verifier->pk, concat_buffer, concat_buffer_length) == SBF_ELEMENT_ABSENTS) {
-      free(concat_buffer);
-      verifier->state = 0;
-      return BFTVMHORS_SIGNATURE_REJECTED;
-    }
+#ifdef OHBF
+
+      /* Check if the value exists in the BF */
+        if (ohbf_check(verifier->pk, concat_buffer, concat_buffer_length) == SBF_ELEMENT_ABSENTS) {
+          free(concat_buffer);
+          verifier->state = 0;
+    #ifdef TIMEKEEPING
+        /* We put the timing here as to get timing until the point that the signature is valid */
+        gettimeofday(&end_time, NULL);
+        bftvmhors_verify_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+    #endif
+          return BFTVMHORS_SIGNATURE_REJECTED;
+        }
+
+#else
+        /* Check if the value exists in the BF */
+        if (sbf_check(verifier->pk, concat_buffer, concat_buffer_length) == SBF_ELEMENT_ABSENTS) {
+          free(concat_buffer);
+          verifier->state = 0;
+    #ifdef TIMEKEEPING
+        /* We put the timing here as to get timing until the point that the signature is valid */
+        gettimeofday(&end_time, NULL);
+        bftvmhors_verify_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+    #endif
+          return BFTVMHORS_SIGNATURE_REJECTED;
+        }
+#endif
+
   }
+#ifdef TIMEKEEPING
+   gettimeofday(&end_time, NULL);
+   bftvmhors_verify_time += (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+#endif
   free(concat_buffer);
   verifier->state++;
   return BFTVMHORS_SIGNATURE_ACCEPTED;
@@ -262,12 +444,19 @@ u32 bftvmhors_verify(bftvmhors_verifier_t* verifier, bftvmhors_hp_t* hp,
 u32 bftvmhors_new_hp(bftvmhors_hp_t* new_hp, const u8* config_file) {
   u8 line_buffer[CONFIG_FILE_MAX_LENGTH];
 
-  /* Parameters of the underlying SBF */
-  u32 sbf_size;
-  u32 sbf_num_hash_functions;
-  u8* sbf_hash_family;
+  /* Parameters of the underlying BF */
+  u32 bf_size;
+  u8 * bf_hash_family;
 
-  read_file_line(line_buffer, CONFIG_FILE_MAX_LENGTH, NULL);
+#ifdef OHBF
+  /* Parameters of the underlying OHBF */
+  u32 ohbf_num_mod_operations;
+#else
+    /* Parameters of the underlying SBF */
+    u32 sbf_num_hash_functions;
+#endif
+
+    read_file_line(line_buffer, CONFIG_FILE_MAX_LENGTH, NULL);
 
   while (!read_file_line(line_buffer, CONFIG_FILE_MAX_LENGTH, config_file)) {
     u8* trimmed_line = str_trim(line_buffer);
@@ -315,6 +504,13 @@ u32 bftvmhors_new_hp(bftvmhors_hp_t* new_hp, const u8* config_file) {
         } else
           return BFTVMHORS_NEW_HP_FAILED;
 
+      } else if (!strcmp(token, "lpk")) {
+          if ((token = strtok(NULL, delim))) {
+              token = str_trim_char(token, '#');
+              new_hp->lpk = strtol(token, NULL, 10);
+          } else
+              return BFTVMHORS_NEW_HP_FAILED;
+
       } else if (!strcmp(token, "rejection_sampling")) {
         if ((token = strtok(NULL, delim))) {
           token = str_trim_char(token, '#');
@@ -342,31 +538,48 @@ u32 bftvmhors_new_hp(bftvmhors_hp_t* new_hp, const u8* config_file) {
       } else if (!strcmp(token, "m")) {
         if ((token = strtok(NULL, delim))) {
           token = str_trim_char(token, '#');
-          sbf_size = strtol(token, NULL, 10);
+          bf_size = strtol(token, NULL, 10);
         } else
           return BFTVMHORS_NEW_HP_FAILED;
 
       } else if (!strcmp(token, "h")) {
         if ((token = strtok(NULL, delim))) {
           token = str_trim_char(token, '#');
-          sbf_num_hash_functions = strtol(token, NULL, 10);
+#ifdef OHBF
+   ohbf_num_mod_operations = strtol(token, NULL, 10);
+#else
+   sbf_num_hash_functions = strtol(token, NULL, 10);
+#endif
         } else
           return BFTVMHORS_NEW_HP_FAILED;
 
       } else if (!strcmp(token, "h_family")) {
         if ((token = strtok(NULL, delim))) {
           token = str_trim_char(token, '#');
-          sbf_hash_family = malloc(strlen(token));
-          memcpy(sbf_hash_family, token, strlen(token));
+          bf_hash_family = malloc(strlen(token));
+          memcpy(bf_hash_family, token, strlen(token));
         } else
           return BFTVMHORS_NEW_HP_FAILED;
       }
       token = strtok(NULL, delim);
     }
   }
-  /* Create the hyper parameter structure of the underlying SBF */
-  new_hp->sbf_hp = sbf_new_hp(sbf_size, sbf_num_hash_functions, sbf_hash_family);
 
+
+#ifdef TVHASHOPTIMIZED
+  new_hp->l = TVOPTIMIZED_L;
+  new_hp->k = TVOPTIMIZED_K;
+  new_hp->t = TVOPTIMIZED_T;
+  new_hp->lpk = TVOPTIMIZED_LPK;
+#endif
+
+
+  /* Create the hyper parameter structure of the underlying BF */
+#ifdef OHBF
+    ohbf_new_hp(&new_hp->ohbf_hp, bf_size, ohbf_num_mod_operations, bf_hash_family);
+#else
+  new_hp->sbf_hp = sbf_new_hp(bf_size, sbf_num_hash_functions, bf_hash_family);
+#endif
   return BFTVMHORS_NEW_HP_SUCCESS;
 }
 

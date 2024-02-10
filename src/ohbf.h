@@ -73,7 +73,7 @@ void ohbf_insert(const ohbf_t *ohbf, const u8 *input, u64 length);
 /// \param input The input to be inserted into the OHBF
 /// \param length The length of the input
 /// \return Returns OHBF_ELEMENT_EXISTS , OHBF_ELEMENT_ABSENTS
-u32 ohbf_check(const ohbf_t *ohbf, const u8 *input, u64 input_length);
+u32 ohbf_check(const ohbf_t *ohbf, const u8 *input, u64 length);
 
 
 

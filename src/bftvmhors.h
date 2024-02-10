@@ -2,7 +2,20 @@
 #define BFTVMHORS_BFTVMHORS_H
 
 #include <bftvmhors/bf.h>
+#include <bftvmhors/ohbf.h>
 #include <bftvmhors/types.h>
+
+
+double bftvmhors_get_keygen_time();
+double bftvmhors_get_sign_time();
+double bftvmhors_get_verify_time();
+
+
+#define BFTVMHORS_KEYGEN_TIME bftvmhors_get_keygen_time()
+#define BFTVMHORS_SIGN_TIME bftvmhors_get_sign_time()
+#define BFTVMHORS_VERIFY_TIME bftvmhors_get_verify_time()
+
+
 
 #define BFTVMHORS_NEW_HP_SUCCESS 0
 #define BFTVMHORS_NEW_HP_FAILED 1
@@ -28,9 +41,14 @@ typedef struct bftvmhors_hp {
   u32 k;                     // k parameter of the HORS signature
   u32 t;                     // t parameter of the HORS signature
   u32 l;                     // l parameter of the HORS signature
+  u32 lpk;                    // Size of the public key portion
   u8 *seed_file;             // Seed file
   u32 sk_seed_len;           // Length of private key seeds in bits
-  sbf_hp_t sbf_hp;           // Hyper parameters of the underlying Standard Bloom Filter (SBF)
+#ifdef OHBF
+    ohbf_hp_t ohbf_hp;           // Hyper parameters of the underlying Standard Bloom Filter (OHBF)
+#else
+    sbf_hp_t sbf_hp;           // Hyper parameters of the underlying Standard Bloom Filter (SBF)
+#endif
   u8 do_rejection_sampling;  // Do/Don't perform rejection sampling
 } bftvmhors_hp_t;
 
@@ -38,7 +56,11 @@ typedef struct bftvmhors_hp {
 typedef struct bftvmhors_keys {
   u8 *seed;
   u8 *sk_seeds;
+#ifdef OHBF
+  ohbf_t pk;
+#else
   sbf_t pk;
+#endif
   u32 num_of_keys;
 } bftvmhors_keys_t;
 
