@@ -2,6 +2,7 @@
 #include <bftvmhors/bits.h>
 #include <bftvmhors/format.h>
 #include <bftvmhors/hash.h>
+#include <bftvmhors/tv_params.h>
 #include <openssl/bn.h>
 #include <stdlib.h>
 #include <string.h>
@@ -87,6 +88,7 @@ void sbf_destroy(const sbf_t *sbf) {
 void sbf_insert(const sbf_t *sbf, u8 *input, u64 length) {
   u8 hash_buffer[HASH_MAX_LENGTH_THRESHOLD];
 
+
 #ifndef TVHASHOPTIMIZED
   BIGNUM *hash_bn = BN_new();
   BIGNUM *sbf_size_bn = BN_new();
@@ -101,6 +103,7 @@ void sbf_insert(const sbf_t *sbf, u8 *input, u64 length) {
   u8 *concat_buffer = malloc(length + sizeof(u32));
 #endif
 
+
   for (u32 i = 0; i < sbf->num_hash_functions; i++) {
 #ifndef TVHASHOPTIMIZED
     u32 concat_buffer_length = concat_buffers(concat_buffer, input, length, &i, 4);
@@ -108,9 +111,8 @@ void sbf_insert(const sbf_t *sbf, u8 *input, u64 length) {
 #else
     /* We do not concat the index with the input but we add it to it */
     input[0] += i; //TODO const changed to non-const
-    u32 hash_size = xxhash3_128(hash_buffer, input, length);
+    u32 hash_size = TVOPTIMIZED_BFTVMHORS_HASH_FUNCTION(hash_buffer, input, length);
 #endif
-
 
     /* Convert the hash value to BigNum for further evaluations.
      *
@@ -118,7 +120,7 @@ void sbf_insert(const sbf_t *sbf, u8 *input, u64 length) {
      *              target_idx = hash % SBF_SIZE
      * */
 
-    u32 target_idx;
+      unsigned __int128 target_idx;
 #ifndef TVHASHOPTIMIZED
     /* Convert the computed hash to a BIGNUM */
     BN_bin2bn(hash_buffer, hash_size, hash_bn);
@@ -129,7 +131,7 @@ void sbf_insert(const sbf_t *sbf, u8 *input, u64 length) {
     /* Converting the result to integer in base 10 */
     target_idx = strtol(BN_bn2dec(target_idx_bn), NULL, 10);
 #else
-    target_idx = *(u64 *)hash_buffer % sbf->size;
+    target_idx = *(unsigned __int128 *)hash_buffer % sbf->size;
 #endif
 
     /* Read the target byte and set the appropriate bit and write back */
@@ -159,7 +161,6 @@ u32 sbf_check(const sbf_t *sbf, u8 *input, u64 length) {
     /* We concat the given input with the 4-byte index of the SBF hash function */
     u8 *concat_buffer = malloc(length + sizeof(u32));
 #endif
-
     for (u32 i = 0; i < sbf->num_hash_functions; i++) {
 #ifndef TVHASHOPTIMIZED
         u32 concat_buffer_length = concat_buffers(concat_buffer, input, length, &i, 4);
@@ -167,9 +168,8 @@ u32 sbf_check(const sbf_t *sbf, u8 *input, u64 length) {
 #else
         /* We do not concat the index with the input but we add it to it */
     input[0] += i; //TODO const changed to non-const endianness
-    u32 hash_size = xxhash3_128(hash_buffer, input, length);
+    u32 hash_size = TVOPTIMIZED_BFTVMHORS_HASH_FUNCTION(hash_buffer, input, length);
 #endif
-
 
         /* Convert the hash value to BigNum for further evaluations.
          *
@@ -177,7 +177,7 @@ u32 sbf_check(const sbf_t *sbf, u8 *input, u64 length) {
          *              target_idx = hash % SBF_SIZE
          * */
 
-        u32 target_idx;
+        unsigned __int128 target_idx;
 #ifndef TVHASHOPTIMIZED
         /* Convert the computed hash to a BIGNUM */
         BN_bin2bn(hash_buffer, hash_size, hash_bn);
@@ -188,21 +188,20 @@ u32 sbf_check(const sbf_t *sbf, u8 *input, u64 length) {
         /* Converting the result to integer in base 10 */
         target_idx = strtol(BN_bn2dec(target_idx_bn), NULL, 10);
 #else
-        target_idx = *(u64 *)hash_buffer % sbf->size;
+        target_idx = *(unsigned __int128 *)hash_buffer % sbf->size;
 #endif
-
-
     /* Read the target byte and check for the set/unset state of the desired bit */
     u8 sbf_target_byte = sbf->bv[BITS_2_BYTES(target_idx)];
     if (!(sbf_target_byte & (1 << (8 - BITS_MOD_BYTES(target_idx) - 1)))) {
 #ifndef TVHASHOPTIMIZED
         free(concat_buffer);
 #endif
-      return SBF_ELEMENT_ABSENTS;
+        return SBF_ELEMENT_ABSENTS;
     }
   }
 #ifndef TVHASHOPTIMIZED
   free(concat_buffer);
 #endif
+
   return SBF_ELEMENT_EXISTS;
 }

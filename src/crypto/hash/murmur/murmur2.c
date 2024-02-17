@@ -52,7 +52,7 @@ u32 murmur2_32(u8 * hash_output, const u8 * input , u64 length){
   h ^= h >> 15;
 
   memcpy(hash_output, &h, sizeof(uint32_t));
-  return h;
+  return sizeof(uint32_t);
 }
 
 

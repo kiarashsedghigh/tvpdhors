@@ -180,7 +180,7 @@ if(NOT XXHASH_BUNDLED_MODE)
     DESTINATION ${xxHash_CONFIG_INSTALL_DIR}
     NAMESPACE ${PROJECT_NAME}::)
 
-  # configure and install pkg-config
+  # configure and install pkg-config_sample
   include(JoinPaths.cmake)
   set(PREFIX ${CMAKE_INSTALL_PREFIX})
   set(EXECPREFIX "\${prefix}")

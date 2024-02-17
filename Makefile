@@ -1,8 +1,8 @@
 CC = gcc
-CFLAGS = -O3 -w -std=c11 -Wall -Wextra
+CFLAGS = -O3 -w -std=c11 -Wall -Wextra -DTIMEKEEPING -DMULTITHREAD -DTVHASHOPTIMIZED
 LDFLAGS = -lssl -lcrypto -ltomcrypt -lm -lxxhash
 
-HORS_SRC = src/hors.c src/crypto/hash/murmur/*.c src/crypto/hash/xxhash/*.c src/crypto/hash/blake/*.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
+HORS_SRC = hors_example.c src/hors.c src/crypto/hash/murmur/*.c src/crypto/hash/xxhash/*.c src/crypto/hash/blake/*.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
 BFTVMHORS_SRC = src/crypto/hash/wyhash/wyhash.o src/bf.c src/crypto/hash/murmur/*.c src/crypto/hash/xxhash/*.c src/crypto/hash/blake/*.c src/bftvmhors.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
 TEST_SRC = hash_test.c src/crypto/hash/cityhash/cityhash.o src/crypto/hash/wyhash/wyhash.o src/crypto/hash/murmur/*.c src/crypto/hash/xxhash/*.c src/crypto/hash/blake/*.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
 
@@ -21,24 +21,22 @@ BFTVMHORS:
 		mkdir ./target; \
 	fi
 	$(CC) -c $(BFTVMHORS_SRC) $(CFLAGS) $(LDFLAGS)
-	#cp src/config target
-	#cp seed target
+	#cp ./config_sample target/config_sample
+
 
 HORS:
 	if [ ! -d ./target ]; then \
 		mkdir ./target; \
 	fi
-	$(CC) -c $(HORS_SRC) $(CFLAGS) $(LDFLAGS)
-	#cp target/hors.o /usr/lib/
-	#cp src/config target/config_hors
-	#cp seed target
+	$(CC) $(HORS_SRC) $(CFLAGS) -o target/hors $(LDFLAGS)
+	cp ./config_sample target/config_hors
 
-TEST:
-	if [ ! -d ./test ]; then \
-		mkdir ./test; \
-	fi
-	$(CC) $(TEST_SRC) $(CFLAGS) -o test/test $(LDFLAGS)
-	cp tprocess.py test
+#TEST:
+#	if [ ! -d ./test ]; then \
+#		mkdir ./test; \
+#	fi
+#	$(CC) $(TEST_SRC) $(CFLAGS) -o test/test $(LDFLAGS)
+#	cp tprocess.py test
 
 
 clean:

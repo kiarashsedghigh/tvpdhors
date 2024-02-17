@@ -16,7 +16,6 @@ double bftvmhors_get_verify_time();
 #define BFTVMHORS_VERIFY_TIME bftvmhors_get_verify_time()
 
 
-
 #define BFTVMHORS_NEW_HP_SUCCESS 0
 #define BFTVMHORS_NEW_HP_FAILED 1
 
@@ -66,7 +65,7 @@ typedef struct bftvmhors_keys {
 
 /// Implements the BFTVMHORS signature
 typedef struct bftvmhors_signature {
-  u8 *signature;
+  const u8 *signature;
   u32 rejection_sampling_counter;
 } bftvmhors_signature_t;
 
@@ -85,8 +84,8 @@ typedef struct bftvmhors_verifier {
 
 /// Creates hyper parameters for the BFTVMHORS
 /// \param new_hp Pointer to the hyper parameter variable
-/// \param config_file Name/Path of the config file
-/// \return 0 if parsing the config file is successful, 1 otherwise
+/// \param config_file Name/Path of the config_sample file
+/// \return 0 if parsing the config_sample file is successful, 1 otherwise
 u32 bftvmhors_new_hp(bftvmhors_hp_t *new_hp, const u8 *config_file);
 
 /// Destroyes the hyper parameter struct
@@ -98,9 +97,6 @@ void bftvmhors_destroy_hp(bftvmhors_hp_t *bftvmhors_hp);
 /// \param hp Pointer to the BFTVMHORS hyper parameter struct
 /// \return 0 if successful, 1 otherwise
 u32 bftvmhors_keygen(bftvmhors_keys_t *keys, bftvmhors_hp_t *hp);
-
-
-
 
 
 /// Passing the BFTVMHORS hyper parameters and the keys it creates a BFTVMHORS signer
@@ -132,7 +128,7 @@ bftvmhors_verifier_t bftvmhors_new_verifier(sbf_t* pk);
 /// \param message_len Length of the input message
 /// \return BFTVMHORS_SIGNATURE_VERIFIED and BFTVMHORS_SIGNATURE_REJECTED
 u32 bftvmhors_verify(bftvmhors_verifier_t* verifier, bftvmhors_hp_t* hp,
-                     bftvmhors_signature_t* signature, u8* message, u64 message_len);
+                     bftvmhors_signature_t * signature, u8* message, u64 message_len);
 
 
 

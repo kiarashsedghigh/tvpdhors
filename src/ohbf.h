@@ -2,6 +2,7 @@
 #define TVBFMHORS_OHBF_H
 
 #include <bftvmhors/types.h>
+#include <bftvmhors/ohbf_primes.h>
 
 
 #define OHBF_ELEMENT_EXISTS 0
@@ -14,7 +15,7 @@ typedef struct ohbf_hp {
     u32 required_size;         // Required size of the OHBF
     u32 actual_size;            // Actual size of the OHBF
     u32 num_of_mod_operations;  // Number of modulo operations to be used
-    u16 *partitions;    // Size of each partition in the OHBF
+    u32 *partitions;    // Size of each partition in the OHBF
     u8 *hash_family;  // Family of the functions to be used for hashing.
 }ohbf_hp_t;
 
@@ -46,7 +47,7 @@ typedef struct ohbf {
     u32 size;                                       // Size of the OHBF
     u32 (*hash_function)(u8 *, const u8 *, u64);  // Pointer to the hash function
     u32 num_of_mod_operations;  // Number of modulo operations to be used
-    u16 *partitions;    // Size of each partition in the OHBF
+    u32 *partitions;    // Size of each partition in the OHBF
 } ohbf_t;
 
 /// Creates a new OHBF with the given hyper parameters

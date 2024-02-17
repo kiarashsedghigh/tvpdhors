@@ -27,7 +27,7 @@
  * This contains various configuration parameters and feature detection for
  * xxhsum.
  *
- * Similar to config.h in Autotools, this should be the first header included.
+ * Similar to config_sample.h in Autotools, this should be the first header included.
  */
 
 #ifndef XSUM_CONFIG_H
