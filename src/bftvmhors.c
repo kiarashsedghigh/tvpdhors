@@ -106,8 +106,7 @@ u32 bftvmhors_keygen(bftvmhors_keys_t* keys, bftvmhors_hp_t* hp) {
 
         /* Generate BFTVMHORS private keys from the seed. t l-bit strings will be generated as private keys */
         u8* current_state_sks;
-        prng_chacha20(&current_state_sks, current_state_sk_seed,
-                      BITS_2_BYTES(hp->sk_seed_len), BITS_2_BYTES(hp->l) * hp->t);
+        prng_chacha20(&current_state_sks, current_state_sk_seed, BITS_2_BYTES(hp->sk_seed_len), BITS_2_BYTES(hp->l) * hp->t);
 
         /* Inserting generated private keys into the SBF */
 #ifdef MULTITHREAD
@@ -160,10 +159,8 @@ u32 bftvmhors_keygen(bftvmhors_keys_t* keys, bftvmhors_hp_t* hp) {
 #else
     /* Concatenating the BFTVMHORS private key with index and state as sk||i||state */
     to_be_inserted = malloc(BITS_2_BYTES(hp->l) + 2 * sizeof(u32));
-    to_be_inserted_length = concat_buffers( to_be_inserted, hors_sk, BITS_2_BYTES(hp->l),
-                                            &j, sizeof(u32));
-    to_be_inserted_length = concat_buffers(to_be_inserted, to_be_inserted,
-                                           to_be_inserted_length, &i, sizeof(u32));
+    to_be_inserted_length = concat_buffers( to_be_inserted, hors_sk, BITS_2_BYTES(hp->l), &j, sizeof(u32));
+    to_be_inserted_length = concat_buffers(to_be_inserted, to_be_inserted, to_be_inserted_length, &i, sizeof(u32));
 #endif
 
 #ifdef OHBF
@@ -291,8 +288,9 @@ u32 bftvmhors_sign(bftvmhors_signature_t* signature, bftvmhors_signer_t* signer,
 
     /* Perform rejection sampling */
     if (signer->hp->do_rejection_sampling) {
-        if (rejection_sampling(signer->hp->k, signer->hp->t, &signature->rejection_sampling_counter, message_hash, message,
-                               message_len) == BFTVMHORS_REJECTION_SAMPLING_FAILED)
+        if (rejection_sampling(signer->hp->k, signer->hp->t,
+                               &signature->rejection_sampling_counter,
+                               message_hash, message, message_len) == BFTVMHORS_REJECTION_SAMPLING_FAILED)
             BFTVMHORS_SIGNING_FAILED;
     } else
         /* Hashing the message */
@@ -308,8 +306,7 @@ u32 bftvmhors_sign(bftvmhors_signature_t* signature, bftvmhors_signer_t* signer,
     u8* current_state_sk_seed = &signer->keys->sk_seeds[signer->state * BITS_2_BYTES(signer->hp->sk_seed_len)];
     u8* current_state_sk_keys;
     prng_chacha20(&current_state_sk_keys, current_state_sk_seed,
-                  BITS_2_BYTES(signer->hp->sk_seed_len),
-                  BITS_2_BYTES(signer->hp->l) * signer->hp->t);
+                  BITS_2_BYTES(signer->hp->sk_seed_len), BITS_2_BYTES(signer->hp->l) * signer->hp->t);
 
 #ifdef TIMEKEEPING
     gettimeofday(&start_time, NULL);
@@ -382,8 +379,7 @@ u32 bftvmhors_verify(bftvmhors_verifier_t* verifier, bftvmhors_hp_t* hp,
 
 #ifndef TVHASHOPTIMIZED
     /* Concat signature with portion index */
-    to_be_checked_length = concat_buffers(to_be_checked,
-                                          signature->signature + i * BITS_2_BYTES(hp->l),
+    to_be_checked_length = concat_buffers(to_be_checked, signature->signature + i * BITS_2_BYTES(hp->l),
                                           BITS_2_BYTES(hp->l), &portion_value, sizeof(u32));
 
     /* Concat signature/index with state */

@@ -43,17 +43,11 @@ static void hors_keygen_thread(hors_keygen_thread_argument_t* args) {
         u8 message_hash[HASH_MAX_LENGTH_THRESHOLD];
 
 #ifdef TVHASHOPTIMIZED
-        TVOPTIMIZED_HORS_HASH_FUNCTION(
-        message_hash, args->keys->sk + i * BITS_2_BYTES(args->hp->l),
-        BITS_2_BYTES(args->hp->l));
+        TVOPTIMIZED_HORS_HASH_FUNCTION(message_hash, args->keys->sk + i * BITS_2_BYTES(args->hp->l), BITS_2_BYTES(args->hp->l));
 #else
-        ltc_hash_sha2_256(message_hash,
-                          args->keys->sk + i * BITS_2_BYTES(args->hp->l),
-                          BITS_2_BYTES(args->hp->l));
+        ltc_hash_sha2_256(message_hash, args->keys->sk + i * BITS_2_BYTES(args->hp->l), BITS_2_BYTES(args->hp->l));
 #endif
-        memcpy(args->keys->pk + i * BITS_2_BYTES(args->hp->lpk),
-               message_hash,
-               BITS_2_BYTES(args->hp->lpk));
+        memcpy(args->keys->pk + i * BITS_2_BYTES(args->hp->lpk), message_hash, BITS_2_BYTES(args->hp->lpk));
     }
     pthread_exit(NULL);
 }
@@ -119,18 +113,15 @@ u32 hors_keygen(hors_keys_t* keys, hors_hp_t* hp) {
         TVOPTIMIZED_HORS_HASH_FUNCTION(
         message_hash, keys->sk + i * BITS_2_BYTES(hp->l), BITS_2_BYTES(hp->l));
 #else
-        ltc_hash_sha2_256(message_hash, keys->sk + i * BITS_2_BYTES(hp->l),
-                          BITS_2_BYTES(hp->l));
+        ltc_hash_sha2_256(message_hash, keys->sk + i * BITS_2_BYTES(hp->l), BITS_2_BYTES(hp->l));
 #endif
-        memcpy(keys->pk + i * BITS_2_BYTES(hp->lpk), message_hash,
-               BITS_2_BYTES(hp->lpk));
+        memcpy(keys->pk + i * BITS_2_BYTES(hp->lpk), message_hash, BITS_2_BYTES(hp->lpk));
     }
 #endif
 
 #ifdef TIMEKEEPING
     gettimeofday(&end_time, NULL);
-  hors_keygen_time = (end_time.tv_sec - start_time.tv_sec) +
-                     (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+    hors_keygen_time = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
 #endif
 
     return HORS_KEYGEN_SUCCESS;
@@ -172,12 +163,10 @@ static u32 rejection_sampling(u32 k, u32 t, u32* ctr, u8* message_hash,
         /* Clear the dictionary */
         for (u32 i = 0; i < t; i++) portion_number_dict[i] = 0;
 
-        ltc_hash_sha2_256(message_hash, message_counter_buffer,
-                          message_len + sizeof(u32));
+        ltc_hash_sha2_256(message_hash, message_counter_buffer, message_len + sizeof(u32));
 
         for (u32 i = 0; i < k; i++) {
-            u32 portion_value =
-                    read_bits_as_4bytes(message_hash, i + 1, bit_slice_len);
+            u32 portion_value = read_bits_as_4bytes(message_hash, i + 1, bit_slice_len);
             if (portion_number_dict[portion_value]) {
                 ctr_found = 0;
                 break;
@@ -223,8 +212,7 @@ static u32 rejection_sampling_status(u32 k, u32 t, u32 ctr, u8* message_hash,
     /* Clear the dictionary */
     for (u32 i = 0; i < t; i++) portion_number_dict[i] = 0;
 
-    ltc_hash_sha2_256(message_hash, message_counter_buffer,
-                      message_len + sizeof(u32));
+    ltc_hash_sha2_256(message_hash, message_counter_buffer, message_len + sizeof(u32));
     for (u32 i = 0; i < k; i++) {
         u32 portion_value = read_bits_as_4bytes(message_hash, i + 1, bit_slice_len);
         if (portion_number_dict[portion_value])
@@ -270,9 +258,7 @@ u32 hors_sign(hors_signature_t* signature, hors_signer_t* signer, u8* message, u
     /* Extract the portions from the private key and write to the signature */
     for (u32 i = 0; i < signer->hp->k; i++) {
         u32 portion_value = read_bits_as_4bytes(message_hash, i + 1, bit_slice_len);
-        memcpy(&signature->signature[i * BITS_2_BYTES(signer->hp->l)],
-               &signer->keys->sk[portion_value * BITS_2_BYTES(signer->hp->l)],
-               BITS_2_BYTES(signer->hp->l));
+        memcpy(&signature->signature[i * BITS_2_BYTES(signer->hp->l)], &signer->keys->sk[portion_value * BITS_2_BYTES(signer->hp->l)], BITS_2_BYTES(signer->hp->l));
     }
 #ifdef TIMEKEEPING
     gettimeofday(&end_time, NULL);
@@ -325,12 +311,10 @@ u32 hors_verify(hors_verifier_t* verifier, hors_hp_t* hp, hors_signature_t* sign
 #endif
         /* Compare the hashed current signature element (sk) with public key indexed
          * by portion_value */
-        if (memcmp(sk_hash,
-                   &verifier->pk[portion_value * BITS_2_BYTES(hp->lpk)],
-                   BITS_2_BYTES(hp->lpk)) != 0) {
+        if (memcmp(sk_hash, &verifier->pk[portion_value * BITS_2_BYTES(hp->lpk)], BITS_2_BYTES(hp->lpk)) != 0) {
 #ifdef TIMEKEEPING
-        gettimeofday(&end_time, NULL);
-        hors_verify_time = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
+            gettimeofday(&end_time, NULL);
+            hors_verify_time = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec) / 1.0e6;
 #endif
             return HORS_SIGNATURE_REJECTED;
         }
