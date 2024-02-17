@@ -6,22 +6,24 @@
 #include <bftvmhors/hash.h>
 #include <bftvmhors/prng.h>
 #include <bftvmhors/tv_params.h>
+#include <bftvmhors/debug.h>
 #include <math.h>
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 /* Time information variables/functions for BFTVMHORS */
 #ifdef TIMEKEEPING
-struct timeval start_time, end_time;
+    struct timeval start_time, end_time;
 
-static double bftvmhors_keygen_time = 0;
-static double bftvmhors_sign_time = 0;
-static double bftvmhors_verify_time = 0;
+    static double bftvmhors_keygen_time = 0;
+    static double bftvmhors_sign_time = 0;
+    static double bftvmhors_verify_time = 0;
 
-double bftvmhors_get_keygen_time() { return bftvmhors_keygen_time; }
-double bftvmhors_get_sign_time() { return bftvmhors_sign_time; }
-double bftvmhors_get_verify_time() { return bftvmhors_verify_time; }
+    double bftvmhors_get_keygen_time() { return bftvmhors_keygen_time; }
+    double bftvmhors_get_sign_time() { return bftvmhors_sign_time; }
+    double bftvmhors_get_verify_time() { return bftvmhors_verify_time; }
 #endif
 
 #define CONFIG_FILE_MAX_LENGTH 300
@@ -39,7 +41,7 @@ typedef struct bftvmhors_keygen_thread_argument {
 /// Running thread of the keygen
 /// \param args Struct for the parameters needed to be passed to the running thread of the keygen
 void bftvmhors_keygen_thread(bftvmhors_keygen_thread_argument_t* args) {
-    for (u32 j = args->private_key_start; j < args->private_key_end; j++) {
+    for (u32 j = args->private_key_start; j <= args->private_key_end; j++) {
 
         u8* hors_sk = &args->current_state_sks[j * BITS_2_BYTES(args->hp->l)];
 
@@ -75,8 +77,11 @@ void bftvmhors_keygen_thread(bftvmhors_keygen_thread_argument_t* args) {
 
 u32 bftvmhors_keygen(bftvmhors_keys_t* keys, bftvmhors_hp_t* hp) {
     /* Read the seed file */
-    u32 seed_len = read_file(&keys->seed, hp->seed_file);
-
+    u32 seed_len;
+    if ((seed_len = read_file(&keys->seed, hp->seed_file)) == FILE_OPEN_ERROR) {
+        debug("Seed file does not exist", DEBUG_ERR);
+        return BFTVMHORS_KEYGEN_FAILED;
+    }
     /* Set the number of keys */
     keys->num_of_keys = hp->N;
 
@@ -98,11 +103,10 @@ u32 bftvmhors_keygen(bftvmhors_keys_t* keys, bftvmhors_hp_t* hp) {
         prng_chacha20(&current_state_sks, current_state_sk_seed, BITS_2_BYTES(hp->sk_seed_len),BITS_2_BYTES(hp->l) * hp->t);
 
         /* Inserting generated private keys into the SBF */
-#ifdef TVMULTITHREAD
+#ifdef MULTITHREAD
     /* Compute the number of threads and allocate array of threads */
     u32 number_of_threads = hp->t / BFTVMHORS_KEYGEN_THREAD_CAPACITY;
     pthread_t* threads = malloc(sizeof(pthread_t) * number_of_threads);
-
 
     /* A template for the thread argument as the start and end index of the key is different for each thread. */
     bftvmhors_keygen_thread_argument_t thread_arg_template = {current_state_sks, 0, 0, keys, hp, i};
@@ -260,12 +264,11 @@ static u32 rejection_sampling_status(u32 k, u32 t, u32 ctr, u8* message_hash, u8
     return BFTVMHORS_REJECTION_SAMPLING_DONE;
 }
 
-bftvmhors_signer_t bftvmhors_new_signer(bftvmhors_hp_t* hp, bftvmhors_keys_t* keys) {
-    bftvmhors_signer_t signer;
-    signer.state = 0;
-    signer.keys = keys;
-    signer.hp = hp;
-    return signer;
+u32 bftvmhors_new_signer(bftvmhors_signer_t * signer, bftvmhors_hp_t* hp, bftvmhors_keys_t* keys) {
+    signer->state = 0;
+    signer->keys = keys;
+    signer->hp = hp;
+    return BFTVMHORS_NEW_SIGNER_SUCCESS;
 }
 
 u32 bftvmhors_sign(bftvmhors_signature_t* signature, bftvmhors_signer_t* signer, u8* message, u64 message_len) {
@@ -326,11 +329,10 @@ u32 bftvmhors_sign(bftvmhors_signature_t* signature, bftvmhors_signer_t* signer,
     return BFTVMHORS_SIGNING_SUCCESS;
 }
 
-bftvmhors_verifier_t bftvmhors_new_verifier(sbf_t* pk) {
-    bftvmhors_verifier_t verifier;
-    verifier.state = 0;
-    verifier.pk = pk;
-    return verifier;
+u32 bftvmhors_new_verifier(bftvmhors_verifier_t * verifier, sbf_t* pk) {
+    verifier->state = 0;
+    verifier->pk = pk;
+    return BFTVMHORS_NEW_VERIFIER_SUCCESS;
 }
 
 u32 bftvmhors_verify(bftvmhors_verifier_t* verifier, bftvmhors_hp_t* hp,
@@ -451,7 +453,7 @@ u32 bftvmhors_new_hp(bftvmhors_hp_t* new_hp, const u8* config_file) {
     u32 sbf_num_hash_functions;
 #endif
     read_file_line(line_buffer, CONFIG_FILE_MAX_LENGTH, NULL);
-
+    //TODO check for file not exists
     while (!read_file_line(line_buffer, CONFIG_FILE_MAX_LENGTH, config_file)) {
         u8* trimmed_line = str_trim(line_buffer);
 
@@ -576,4 +578,15 @@ u32 bftvmhors_new_hp(bftvmhors_hp_t* new_hp, const u8* config_file) {
     return BFTVMHORS_NEW_HP_SUCCESS;
 }
 
-void bftvmhors_destroy_hp(bftvmhors_hp_t* bftvmhors_hp) { free(bftvmhors_hp->seed_file); }
+void bftvmhors_destroy_hp(bftvmhors_hp_t* hp) { free(hp->seed_file); }
+
+void bftvmhors_destroy_keys(bftvmhors_keys_t* keys) {
+    free(keys->seed);
+    free(keys->sk_seeds);
+
+    #ifdef OHBF
+        ohbf_destroy(&keys->pk);
+    #else
+        sbf_destroy(&keys->pk);
+    #endif
+}

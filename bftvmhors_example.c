@@ -1,94 +1,58 @@
 #include <bftvmhors/bftvmhors.h>
 #include <bftvmhors/bits.h>
-#include <stdio.h>
+#include <bftvmhors/debug.h>
+#include <bftvmhors/file.h>
 #include <stdlib.h>
-#include <sys/time.h>
 
-#define CNT 10000
-#include <bftvmhors/prng.h>
-int main() {
+int main(int argc, char** argv) {
 
-    double keygen_time = 0;
-    double sign_time = 0;
-    double verify_time = 0;
-
-
-    bftvmhors_hp_t bftvmhors_hp;
-    bftvmhors_keys_t bftvmhors_keys;
-
-    bftvmhors_new_hp(&bftvmhors_hp, "./config_sample");
-    printf("------------\n");
-    printf("t: %d\n", bftvmhors_hp.t);
-    printf("k: %d\n", bftvmhors_hp.k);
-    printf("l: %d\n", bftvmhors_hp.l);
-    printf("lpk: %d\n", bftvmhors_hp.lpk);
-    printf("h: %d\n", bftvmhors_hp.ohbf_hp.num_of_mod_operations);
-    printf("m: %d\n", bftvmhors_hp.ohbf_hp.actual_size);
-
-
-    for (int i = 0; i < CNT; i++) {
-        bftvmhors_keygen(&bftvmhors_keys, &bftvmhors_hp);
-        keygen_time += BFTVMHORS_KEYGEN_TIME;
+    if (argc<3){
+        debug("Usage:  ./hors CONFIG_FILE_PATH MESSAGE_FILE_PATH", DEBUG_ERR);
+        return 1;
     }
+    debug("Parameters of the config_sample file should be chosen carefully (bf, t, k, multi-thread...), otherwise, the output can be unexpected", DEBUG_WARNING);
 
-    //    for(int i=0;i<20;i++)
-//        printf("%0.2x",bftvmhors_keys.sk_seeds[i]);
-//    exit(0);
-////
-//#ifdef TVMULTITHREAD
-//    u8* current_state_sks;
-//    prng_chacha20(&current_state_sks, bftvmhors_keys.sk_seeds, BITS_2_BYTES(bftvmhors_hp.sk_seed_len),BITS_2_BYTES(bftvmhors_hp.l) * bftvmhors_hp.t);
-//    for(int i=0;i<10;i++)
-//        printf("%0.2x",bftvmhors_keys.sk_seeds[i]);
-//
-//    printf("\n");
-//    for(int i=0;i<bftvmhors_hp.t;i++){
-//        for(int j=0;j<BITS_2_BYTES(bftvmhors_hp.l);j++){
-//            printf("%0.2x",current_state_sks[i*8 + j]);
-//        }
-//            printf("\n");
-//    }
-//    printf("%0.2x\n", bftvmhors_keys);
-//#endif
+    /* Hyper parameters and keys */
+    bftvmhors_hp_t hp;
+    bftvmhors_keys_t keys;
 
-    bftvmhors_signer_t signer = bftvmhors_new_signer(&bftvmhors_hp, &bftvmhors_keys);
+    debug("Reading the config file...", DEBUG_INF);
+    if (bftvmhors_new_hp(&hp, argv[1]) == BFTVMHORS_NEW_HP_FAILED)
+        return 1;
+
+    debug("Generating private and public keys...", DEBUG_INF);
+    if (bftvmhors_keygen(&keys, &hp) == BFTVMHORS_KEYGEN_FAILED)
+        return 1;
+
+    /* Signer */
+    debug("New signer is created", DEBUG_INF);
+    bftvmhors_signer_t signer;
+    bftvmhors_new_signer(&signer, &hp, &keys);
     bftvmhors_signature_t signature;
     signature.signature = malloc(signer.hp->k * BITS_2_BYTES(signer.hp->l));
 
+    /* Reading the message */
+    u8 * message;
+    u32 message_len;
+    if ((message_len = read_file(&message, argv[2])) == FILE_OPEN_ERROR)
+        return 1;
 
-    for(int i=0;i<CNT;i++) {
+    bftvmhors_sign(&signature, &signer, message, message_len);
+    debug("Signature is ready", DEBUG_INF);
 
-        /* Signer */
+    /* Verifier */
+    debug("New verifier is created", DEBUG_INF);
+    bftvmhors_verifier_t verifier;
+    bftvmhors_new_verifier(&verifier, &keys.pk);
 
-        bftvmhors_sign(&signature, &signer, "aaa", 3);
-        sign_time += BFTVMHORS_SIGN_TIME;
+    if (bftvmhors_verify(&verifier, &hp, &signature, message, message_len) == BFTVMHORS_SIGNATURE_ACCEPTED)
+        debug("Verification: Signature is valid", DEBUG_INF);
+    else
+        debug("Verification: Signature is (not) valid", DEBUG_INF);
 
-        bftvmhors_verifier_t verifier = bftvmhors_new_verifier(&bftvmhors_keys.pk);
+    debug("Deleting hyper parameter and the keys", DEBUG_INF);
+    bftvmhors_destroy_keys(&keys);
+    bftvmhors_destroy_hp(&hp);
 
-        /* Verifier */
-        bftvmhors_verify(&verifier, &bftvmhors_hp, &signature, "aaa", 3);
-        verify_time += BFTVMHORS_VERIFY_TIME;
-//
-        if (bftvmhors_verify(&verifier, &bftvmhors_hp, &signature, "aaa", 3)==BFTVMHORS_SIGNATURE_ACCEPTED)
-            printf("signature is valid\n");
-        else
-            printf("signature is not valid\n");
-
-    }
-
-    printf("------------\n");
-    printf("t: %d\n", bftvmhors_hp.t);
-    printf("k: %d\n", bftvmhors_hp.k);
-    printf("l: %d\n", bftvmhors_hp.l);
-    printf("lpk: %d\n", bftvmhors_hp.lpk);
-    printf("h: %d\n", bftvmhors_hp.ohbf_hp.num_of_mod_operations);
-    printf("m: %d\n", bftvmhors_hp.ohbf_hp.required_size);
-
-    printf("Act Size: %d\n",bftvmhors_hp.ohbf_hp.actual_size);
-    printf("BFTVMHORS Keygen Time: %0.12f\n", keygen_time/CNT * 1000000);
-    printf("BFTVMHORS Sign Time: %0.12f\n", sign_time/CNT * 1000000);
-    printf("BFTVMHORS Verify Time: %0.12f\n", verify_time/CNT * 1000000);
-
-    bftvmhors_destroy_hp(&bftvmhors_hp);
 }
 

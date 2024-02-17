@@ -19,6 +19,12 @@ double bftvmhors_get_verify_time();
 #define BFTVMHORS_NEW_HP_SUCCESS 0
 #define BFTVMHORS_NEW_HP_FAILED 1
 
+#define BFTVMHORS_NEW_SIGNER_SUCCESS 0
+#define BFTVMHORS_NEW_SIGNER_FAILED 1
+
+#define BFTVMHORS_NEW_VERIFIER_SUCCESS 0
+#define BFTVMHORS_NEW_VERIFIER_FAILED 1
+
 #define BFTVMHORS_KEYGEN_SUCCESS 0
 #define BFTVMHORS_KEYGEN_FAILED 1
 
@@ -88,9 +94,13 @@ typedef struct bftvmhors_verifier {
 /// \return 0 if parsing the config_sample file is successful, 1 otherwise
 u32 bftvmhors_new_hp(bftvmhors_hp_t *new_hp, const u8 *config_file);
 
-/// Destroyes the hyper parameter struct
-/// \param bftvmhors_hp Pointer to the hyper parameter struct
-void bftvmhors_destroy_hp(bftvmhors_hp_t *bftvmhors_hp);
+/// Destroys the hyper parameter struct
+/// \param hp Pointer to the hyper parameter struct
+void bftvmhors_destroy_hp(bftvmhors_hp_t* hp);
+
+/// Destroys the keys struct
+/// \param keys Pointer to the keys struct
+void bftvmhors_destroy_keys(bftvmhors_keys_t* keys);
 
 /// Generates the BFTVMHORS keys
 /// \param keys Pointer to the BFTVMHORS key struct
@@ -100,10 +110,11 @@ u32 bftvmhors_keygen(bftvmhors_keys_t *keys, bftvmhors_hp_t *hp);
 
 
 /// Passing the BFTVMHORS hyper parameters and the keys it creates a BFTVMHORS signer
+/// \param signer Pointer to the signer struct
 /// \param hp BFTVMHORS hyper parameter
 /// \param keys BFTVMHORS keys
-/// \return BFTVMHORS signer
-bftvmhors_signer_t bftvmhors_new_signer(bftvmhors_hp_t* hp, bftvmhors_keys_t* keys);
+/// \return BFTVMHORS_NEW_SIGNER_SUCCESS and BFTVMHORS_NEW_SIGNER_FAILED
+u32 bftvmhors_new_signer(bftvmhors_signer_t * signer, bftvmhors_hp_t* hp, bftvmhors_keys_t* keys);
 
 /// BFTVMHORS signer
 /// \param signature Pointer to the output signature struct
@@ -117,8 +128,8 @@ u32 bftvmhors_sign(bftvmhors_signature_t* signature, bftvmhors_signer_t* signer,
 
 /// Passing the BFTVMHORS public key (sbf_t type), returns a BFTVMHORS verifier
 /// \param pk BFTVMHORS public key which is a SBF
-/// \return BFTVMHORS verifier
-bftvmhors_verifier_t bftvmhors_new_verifier(sbf_t* pk);
+/// \return BFTVMHORS_NEW_VERIFIER_SUCCESS, BFTVMHORS_NEW_VERIFIER_FAILED
+u32 bftvmhors_new_verifier(bftvmhors_verifier_t * verifier, sbf_t* pk);
 
 /// BFTVMHORS verifier
 /// \param verifier Pointer to the BFTVMHORS verifier struct
@@ -129,9 +140,5 @@ bftvmhors_verifier_t bftvmhors_new_verifier(sbf_t* pk);
 /// \return BFTVMHORS_SIGNATURE_VERIFIED and BFTVMHORS_SIGNATURE_REJECTED
 u32 bftvmhors_verify(bftvmhors_verifier_t* verifier, bftvmhors_hp_t* hp,
                      bftvmhors_signature_t * signature, u8* message, u64 message_len);
-
-
-
-
 
 #endif

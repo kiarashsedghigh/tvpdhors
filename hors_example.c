@@ -4,8 +4,6 @@
 #include <bftvmhors/file.h>
 #include <stdlib.h>
 
-#define ITERATION_CNT 10000
-
 int main(int argc, char **argv) {
 
     if (argc<3){
@@ -22,7 +20,6 @@ int main(int argc, char **argv) {
     if (hors_new_hp(&hp, argv[1]) == HORS_NEW_HP_FAILED)
         return 1;
 
-    /* HORS key generation */
     debug("Generating private and public keys...", DEBUG_INF);
     if (hors_keygen(&keys, &hp) == HORS_KEYGEN_FAILED)
         return 1;
@@ -42,17 +39,6 @@ int main(int argc, char **argv) {
 
     hors_sign(&signature, &signer, message, message_len);
     debug("Signature is ready", DEBUG_INF);
-
-
-//    double sign_time = 0;
-//    for(int i=0;i<1000;i++) {
-//        hors_sign(&signature, &signer, message, message_len);
-//        sign_time += HORS_SIGN_TIME;
-//    }
-////
-//    printf("Hors Sign Time: %0.12f\n", sign_time/1000* 1000000);
-
-
 
 
     /* Verifier */
