@@ -6,8 +6,6 @@ HORS_SRC = hors_example.c src/hors.c src/crypto/hash/murmur/*.c src/crypto/hash/
 BFTVMHORS_SRC = bftvmhors_example.c src/ohbf.c src/crypto/hash/wyhash/wyhash.o src/bf.c src/crypto/hash/murmur/*.c src/crypto/hash/xxhash/*.c src/crypto/hash/blake/*.c src/bftvmhors.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
 TEST_SRC = hash_test.c src/crypto/hash/cityhash/cityhash.o src/crypto/hash/wyhash/wyhash.o src/crypto/hash/murmur/*.c src/crypto/hash/xxhash/*.c src/crypto/hash/blake/*.c src/crypto/hash/*.c src/crypto/prng/*.c src/utils/*.c
 
-HEADER_FILES= bf.h bftvmhors.h hash.h hors.h prng.h types.h
-
 ## Libxxhaash needs to be installed
 install:
 	if [ ! -d /usr/include/bftvmhors/ ]; then \
@@ -31,16 +29,5 @@ HORS:
 	$(CC) $(HORS_SRC) $(CFLAGS) -o target/hors $(LDFLAGS)
 	cp ./config_sample target/config_hors
 
-#TEST:
-#	if [ ! -d ./test ]; then \
-#		mkdir ./test; \
-#	fi
-#	$(CC) $(TEST_SRC) $(CFLAGS) -o test/test $(LDFLAGS)
-#	cp tprocess.py test
-
-
 clean:
 	rm -rf ./target ./test
-
-#header_clean:
-#	rm -rf /usr/include/bftvmhors/{$(HEADER_FILES)}
