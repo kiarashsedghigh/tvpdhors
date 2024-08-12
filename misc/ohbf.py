@@ -53,7 +53,7 @@ def ohbf(total_size, k, n):
 
     print("Fpp (bit): {}".format(bit_security))
     print("Partitions", partitions)
-    print("Final Size: ", sum(partitions))
+    print("Final Size: {0}-bits .. {1}-Bytes".format(sum(partitions),sum(partitions)/8))
 
 
 if __name__ == '__main__':
